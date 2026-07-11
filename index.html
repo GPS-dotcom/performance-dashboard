@@ -6,9 +6,7 @@
 <title>GPS → Chicago 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/react-is@18/umd/react-is.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -140,11 +138,6 @@
 
 <script type="text/babel">
 const { useState, useMemo, useEffect } = React;
-const {
-  LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, Cell
-} = Recharts;
 const { createClient } = supabase;
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -165,22 +158,22 @@ const ZONE_DEFS = [
 ];
 
 const FITNESS_PROJ = [
-  { w:"Atual", ctl:32, atl:44, tsb:-12 },
-  { w:"W1",    ctl:38, atl:56, tsb:-18 },
-  { w:"W2",    ctl:43, atl:59, tsb:-16 },
-  { w:"W3",    ctl:48, atl:62, tsb:-14 },
-  { w:"W4🏅",  ctl:46, atl:42, tsb:  4 },
-  { w:"W5",    ctl:48, atl:50, tsb: -2 },
-  { w:"W6",    ctl:54, atl:62, tsb: -8 },
-  { w:"W7",    ctl:58, atl:66, tsb: -8 },
-  { w:"W8↓",   ctl:58, atl:52, tsb:  6 },
-  { w:"W9",    ctl:62, atl:68, tsb: -6 },
-  { w:"W10",   ctl:65, atl:72, tsb: -7 },
-  { w:"W11",   ctl:67, atl:74, tsb: -7 },
-  { w:"W12↓",  ctl:66, atl:58, tsb:  8 },
-  { w:"T1",    ctl:64, atl:50, tsb: 14 },
-  { w:"T2",    ctl:61, atl:42, tsb: 19 },
-  { w:"RACE",  ctl:58, atl:36, tsb: 22 },
+  { x:"Atual", ctl:32, atl:44, tsb:-12 },
+  { x:"W1",    ctl:38, atl:56, tsb:-18 },
+  { x:"W2",    ctl:43, atl:59, tsb:-16 },
+  { x:"W3",    ctl:48, atl:62, tsb:-14 },
+  { x:"W4🏅",  ctl:46, atl:42, tsb:  4 },
+  { x:"W5",    ctl:48, atl:50, tsb: -2 },
+  { x:"W6",    ctl:54, atl:62, tsb: -8 },
+  { x:"W7",    ctl:58, atl:66, tsb: -8 },
+  { x:"W8↓",   ctl:58, atl:52, tsb:  6 },
+  { x:"W9",    ctl:62, atl:68, tsb: -6 },
+  { x:"W10",   ctl:65, atl:72, tsb: -7 },
+  { x:"W11",   ctl:67, atl:74, tsb: -7 },
+  { x:"W12↓",  ctl:66, atl:58, tsb:  8 },
+  { x:"T1",    ctl:64, atl:50, tsb: 14 },
+  { x:"T2",    ctl:61, atl:42, tsb: 19 },
+  { x:"RACE",  ctl:58, atl:36, tsb: 22 },
 ];
 
 const WEEKS = [
@@ -264,6 +257,68 @@ function classifyActivity(a) {
   if (rtssPerHour > 65) return { label:"Qualidade", color:"#FF3333" };
   if (rtssPerHour > 35) return { label:"Z2", color:"#FCC419" };
   return { label:"Z1", color:"#94D82D" };
+}
+
+// ─── CUSTOM SVG CHARTS (sem dependência externa) ─────────────────────────────
+function MiniLineChart({ data, lines, height=200, refLines=[] }) {
+  const width = 700;
+  const padding = { top:12, right:10, bottom:22, left:34 };
+  const allValues = data.flatMap(d => lines.map(l => d[l.key])).filter(v => v!=null && !isNaN(v));
+  const refVals = refLines.map(r => r.y);
+  const minV = Math.min(0, ...allValues, ...refVals);
+  const maxV = Math.max(1, ...allValues, ...refVals);
+  const innerW = width - padding.left - padding.right;
+  const innerH = height - padding.top - padding.bottom;
+  const xStep = data.length > 1 ? innerW / (data.length - 1) : 0;
+  const yScale = v => padding.top + innerH - ((v - minV) / (maxV - minV || 1)) * innerH;
+  const xScale = i => padding.left + i * xStep;
+  const labelEvery = Math.max(1, Math.ceil(data.length / 7));
+
+  function pathFor(key) {
+    return data.map((d,i) => `${i===0?"M":"L"} ${xScale(i).toFixed(1)} ${yScale(d[key]).toFixed(1)}`).join(" ");
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width:"100%", height, display:"block" }}>
+      {refLines.map((rl,i) => (
+        <g key={i}>
+          <line x1={padding.left} x2={width-padding.right} y1={yScale(rl.y)} y2={yScale(rl.y)} stroke={rl.color||"#94D82D"} strokeDasharray="4 3" strokeWidth={1} />
+          {rl.label && <text x={width-padding.right} y={yScale(rl.y)-4} fontSize="9" fill={rl.color||"#94D82D"} textAnchor="end">{rl.label}</text>}
+        </g>
+      ))}
+      <line x1={padding.left} x2={width-padding.right} y1={yScale(0)} y2={yScale(0)} stroke="#e5e5e5" strokeWidth={1} />
+      {lines.map(l => (
+        <path key={l.key} d={pathFor(l.key)} fill="none" stroke={l.color} strokeWidth={l.width||2} strokeDasharray={l.dash||""} strokeLinejoin="round" strokeLinecap="round" />
+      ))}
+      {data.map((d,i) => (i % labelEvery === 0) ? (
+        <text key={i} x={xScale(i)} y={height-4} fontSize="9" fill="#bbb" textAnchor="middle">{d.x}</text>
+      ) : null)}
+    </svg>
+  );
+}
+
+function MiniBarChart({ data, valueKey, colorFor, height=140, refLines=[] }) {
+  const width = 700;
+  const padding = { top:10, right:10, bottom:20, left:34 };
+  const maxV = Math.max(1, ...data.map(d=>d[valueKey]), ...refLines.map(r=>r.y));
+  const innerW = width - padding.left - padding.right;
+  const innerH = height - padding.top - padding.bottom;
+  const gap = innerW / data.length;
+  const barW = gap * 0.65;
+  const yScale = v => padding.top + innerH - (v/maxV) * innerH;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width:"100%", height, display:"block" }}>
+      {refLines.map((rl,i) => (
+        <line key={i} x1={padding.left} x2={width-padding.right} y1={yScale(rl.y)} y2={yScale(rl.y)} stroke={rl.color||"#ccc"} strokeDasharray="3 3" strokeWidth={1} />
+      ))}
+      {data.map((d,i) => {
+        const x = padding.left + i*gap + (gap-barW)/2;
+        const y = yScale(d[valueKey]);
+        return <rect key={i} x={x} y={y} width={barW} height={(padding.top+innerH)-y} fill={colorFor(d)} rx={3} />;
+      })}
+    </svg>
+  );
 }
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
@@ -393,7 +448,7 @@ function PageOverview({ activities, latestPmc, daysOut }) {
 }
 
 function PageFitness({ pmc, latestPmc }) {
-  const hist = pmc.slice(-30).map(p => ({ w: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+  const hist = pmc.slice(-30).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
 
   return (
     <div className="page gap-14">
@@ -418,18 +473,20 @@ function PageFitness({ pmc, latestPmc }) {
 
       <div className="card">
         <div className="card-label">Histórico Real — Últimos 30 dias</div>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={hist} margin={{top:4,right:8,bottom:0,left:-24}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="w" tick={{fill:"#bbb", fontSize:9}} />
-            <YAxis tick={{fill:"#bbb", fontSize:10}} />
-            <Tooltip {...TT} />
-            <ReferenceLine y={0} stroke="#e0e0e0" />
-            <Line type="monotone" dataKey="ctl" stroke="#4DABF7" strokeWidth={2} dot={false} name="CTL" />
-            <Line type="monotone" dataKey="atl" stroke="#FF3333" strokeWidth={1.5} dot={false} strokeDasharray="5 3" name="ATL" />
-            <Line type="monotone" dataKey="tsb" stroke="#FCC419" strokeWidth={2} dot={false} name="TSB" />
-          </LineChart>
-        </ResponsiveContainer>
+        <MiniLineChart
+          data={hist}
+          lines={[
+            { key:"ctl", color:"#4DABF7", width:2 },
+            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
+            { key:"tsb", color:"#FCC419", width:2 },
+          ]}
+          height={200}
+        />
+        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
+          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
+          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
+          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
+        </div>
       </div>
 
       <div className="card">
@@ -437,39 +494,32 @@ function PageFitness({ pmc, latestPmc }) {
         <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
           Zona verde TSB: +15 a +25 no race day · 🏅 = Meia SP City 26 Jul
         </div>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={FITNESS_PROJ} margin={{top:4,right:8,bottom:0,left:-24}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="w" tick={{fill:"#bbb", fontSize:10}} />
-            <YAxis tick={{fill:"#bbb", fontSize:10}} />
-            <Tooltip {...TT} />
-            <ReferenceLine y={0}  stroke="#e0e0e0" />
-            <ReferenceLine y={15} stroke="#94D82D" strokeDasharray="4 3" label={{value:"TSB min",fill:"#94D82D",fontSize:9}} />
-            <ReferenceLine y={25} stroke="#94D82D" strokeDasharray="4 3" label={{value:"TSB max",fill:"#94D82D",fontSize:9}} />
-            <Line type="monotone" dataKey="ctl" stroke="#4DABF7" strokeWidth={2.5} dot={false} name="CTL" />
-            <Line type="monotone" dataKey="atl" stroke="#FF3333" strokeWidth={1.5} dot={false} strokeDasharray="5 3" name="ATL" />
-            <Line type="monotone" dataKey="tsb" stroke="#FCC419" strokeWidth={2.5} dot={{r:3, fill:"#FCC419"}} name="TSB" />
-          </LineChart>
-        </ResponsiveContainer>
+        <MiniLineChart
+          data={FITNESS_PROJ}
+          lines={[
+            { key:"ctl", color:"#4DABF7", width:2.5 },
+            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
+            { key:"tsb", color:"#FCC419", width:2.5 },
+          ]}
+          height={240}
+          refLines={[{y:15,color:"#94D82D",label:"TSB min"},{y:25,color:"#94D82D",label:"TSB max"}]}
+        />
+        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
+          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
+          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
+          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
+        </div>
       </div>
 
       <div className="card">
         <div className="card-label">Volume por Semana — 90–120km/sem (plano)</div>
-        <ResponsiveContainer width="100%" height={160}>
-          <BarChart data={WEEKS.filter(w=>w.n>0)} margin={{top:4,right:8,bottom:0,left:-24}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="n" tickFormatter={v=>`S${v}`} tick={{fill:"#bbb",fontSize:10}} />
-            <YAxis tick={{fill:"#bbb",fontSize:10}} domain={[0,130]} />
-            <Tooltip {...TT} formatter={v=>[`${v}km`,"Volume"]} labelFormatter={l=>`Semana ${l}`} />
-            <ReferenceLine y={90}  stroke="#4DABF7" strokeDasharray="3 3" />
-            <ReferenceLine y={120} stroke="#FF3333" strokeDasharray="3 3" />
-            <Bar dataKey="vol" radius={[4,4,0,0]}>
-              {WEEKS.filter(w=>w.n>0).map((w,i) => (
-                <Cell key={i} fill={PHASE_COLORS[w.phase]||"#4DABF7"} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <MiniBarChart
+          data={WEEKS.filter(w=>w.n>0)}
+          valueKey="vol"
+          colorFor={w => PHASE_COLORS[w.phase]||"#4DABF7"}
+          height={160}
+          refLines={[{y:90,color:"#4DABF7"},{y:120,color:"#FF3333"}]}
+        />
         <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:10 }}>
           {Object.entries(PHASE_COLORS).map(([ph,c]) => (
             <div key={ph} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#888" }}>
