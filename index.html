@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -19,10 +20,8 @@
   ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
   button { font-family: inherit; cursor: pointer; }
 
-  /* Layout */
   .app-shell { display: flex; min-height: 100vh; }
 
-  /* Sidebar — desktop */
   .sidebar {
     width: 220px; flex-shrink: 0;
     background: #111; color: #fff;
@@ -30,23 +29,13 @@
     position: fixed; top: 0; left: 0; height: 100vh;
     z-index: 100; padding: 0;
   }
-  .sidebar-logo {
-    padding: 28px 24px 20px;
-    border-bottom: 1px solid #222;
-  }
+  .sidebar-logo { padding: 28px 24px 20px; border-bottom: 1px solid #222; }
   .sidebar-logo .race-target {
-    font-family: 'DM Mono', monospace;
-    font-size: 28px; font-weight: 500;
-    color: #E8FF00; letter-spacing: -1px;
-    line-height: 1;
+    font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500;
+    color: #E8FF00; letter-spacing: -1px; line-height: 1;
   }
-  .sidebar-logo .race-label {
-    font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.12em;
-    margin-top: 4px;
-  }
-  .sidebar-logo .race-days {
-    margin-top: 10px; font-size: 11px; color: #999;
-  }
+  .sidebar-logo .race-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.12em; margin-top: 4px; }
+  .sidebar-logo .race-days { margin-top: 10px; font-size: 11px; color: #999; }
   .sidebar-logo .race-days span { color: #fff; font-weight: 600; }
   .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
   .nav-item {
@@ -62,108 +51,60 @@
   .sidebar-footer { padding: 16px 24px; border-top: 1px solid #222; }
   .sidebar-footer p { font-size: 10px; color: #555; line-height: 1.5; }
 
-  /* Main content */
-  .main-content {
-    margin-left: 220px;
-    flex: 1; min-height: 100vh;
-    background: #F5F5F3;
-  }
+  .main-content { margin-left: 220px; flex: 1; min-height: 100vh; background: #F5F5F3; }
 
-  /* Mobile header */
-  .mobile-header {
-    display: none;
-    background: #111; color: #fff;
-    padding: 14px 16px;
-    position: sticky; top: 0; z-index: 90;
-    align-items: center; gap: 12px;
-  }
+  .mobile-header { display: none; background: #111; color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 90; align-items: center; gap: 12px; }
   .mobile-header .logo { font-family: 'DM Mono', monospace; font-size: 18px; color: #E8FF00; font-weight: 500; }
-  .mobile-tabs {
-    display: none;
-    overflow-x: auto; background: #fff;
-    border-bottom: 1px solid #e8e8e8;
-    position: sticky; top: 53px; z-index: 89;
-    gap: 0;
-  }
-  .mobile-tab {
-    flex-shrink: 0; padding: 10px 14px;
-    font-size: 12px; font-weight: 600; color: #999;
-    border: none; background: transparent;
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-  }
+  .mobile-tabs { display: none; overflow-x: auto; background: #fff; border-bottom: 1px solid #e8e8e8; position: sticky; top: 53px; z-index: 89; gap: 0; }
+  .mobile-tab { flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #999; border: none; background: transparent; border-bottom: 2px solid transparent; white-space: nowrap; }
   .mobile-tab.active { color: #111; border-bottom-color: #E8FF00; }
 
-  /* Page content */
   .page { padding: 32px; max-width: 1200px; }
   .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
   .page-sub { font-size: 13px; color: #888; margin-bottom: 24px; }
 
-  /* Cards */
-  .card {
-    background: #fff; border-radius: 16px;
-    border: 1px solid #eee;
-    padding: 20px;
-  }
-  .card-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
-    text-transform: uppercase; color: #aaa; margin-bottom: 12px;
-  }
+  .card { background: #fff; border-radius: 16px; border: 1px solid #eee; padding: 20px; }
+  .card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #aaa; margin-bottom: 12px; }
   .card-title { font-size: 14px; font-weight: 700; color: #111; margin-bottom: 16px; }
 
-  /* Grids */
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
   .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
   .gap-14 { display: flex; flex-direction: column; gap: 14px; }
 
-  /* Stat hero */
   .stat-hero { font-family: 'DM Mono', monospace; font-size: 36px; font-weight: 500; letter-spacing: -1px; line-height: 1; }
   .stat-hero.lg { font-size: 52px; }
   .stat-hero.sm { font-size: 24px; }
   .stat-unit { font-size: 13px; color: #888; font-family: 'Inter', sans-serif; font-weight: 400; }
 
-  /* Zone colors */
   .z1 { color: #94D82D; } .bg-z1 { background: #94D82D22; border-color: #94D82D44; }
   .z2 { color: #4DABF7; } .bg-z2 { background: #4DABF722; border-color: #4DABF744; }
   .z3 { color: #FCC419; } .bg-z3 { background: #FCC41922; border-color: #FCC41944; }
   .z4 { color: #FF922B; } .bg-z4 { background: #FF922B22; border-color: #FF922B44; }
   .z5 { color: #FF3333; } .bg-z5 { background: #FF333322; border-color: #FF333344; }
 
-  /* Phase pill */
-  .phase-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px;
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-  }
+  .phase-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 
-  /* Lap table */
   .lap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .lap-table th { padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #bbb; border-bottom: 1px solid #f0f0f0; }
   .lap-table td { padding: 9px 10px; border-bottom: 1px solid #f5f5f5; color: #333; }
   .lap-table tr:last-child td { border-bottom: none; }
   .lap-table tr:hover td { background: #fafafa; }
 
-  /* Zone bar */
   .zone-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 1px; }
   .zone-bar-seg { height: 100%; border-radius: 2px; }
 
-  /* Progress bar */
   .prog-bar { background: #f0f0f0; border-radius: 4px; height: 6px; overflow: hidden; }
   .prog-bar-fill { height: 100%; border-radius: 4px; }
 
-  /* Week card */
-  .week-card {
-    background: #fff; border: 1px solid #eee; border-radius: 12px;
-    padding: 14px 16px; border-left: 4px solid #ddd;
-  }
+  .week-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px 16px; border-left: 4px solid #ddd; }
   .week-card.current { border-left-color: #E8FF00; background: #FFFFF5; }
 
-  /* Scenario card */
   .scenario-card { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 18px; }
   .scenario-card.goal { border-color: #E8FF00; background: linear-gradient(135deg, #FFFFF5, #fff); }
 
-  /* Responsive */
+  .type-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+
   @media (max-width: 900px) {
     .sidebar { display: none; }
     .main-content { margin-left: 0; }
@@ -179,7 +120,6 @@
     .grid-3 { grid-template-columns: 1fr 1fr; }
   }
 
-  /* Tooltip override for recharts */
   .recharts-tooltip-wrapper .recharts-default-tooltip {
     background: #111 !important; border: none !important;
     border-radius: 8px !important; font-size: 12px !important;
@@ -190,92 +130,23 @@
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
 const {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, ReferenceLine, AreaChart, Area
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceLine, Cell
 } = Recharts;
+const { createClient } = supabase;
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
+// ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://wmkfhvnwpvcsiwaxjefs.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta2Zodm53cHZjc2l3YXhqZWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MjM5MTgsImV4cCI6MjA5OTI5OTkxOH0.dhwuneznZRzUrbs-g557nr8nV_-4_CYzqzooDJrtzSY";
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── STATIC DATA (plano / referência — não vem do Strava) ────────────────────
 const RACE_DATE = new Date("2026-10-11");
-const TODAY     = new Date("2026-07-11");
-const DAYS_OUT  = Math.ceil((RACE_DATE - TODAY) / 86400000);
 const VDOT = 58; const FTP = 393;
 
-// Last workout — 12×400m (Jun 24)
-const LAST_WORKOUT = {
-  name: "12×400m VO₂max 🌧️",
-  date: "24 Jun 2026",
-  type: "I",
-  totalTime: "1:20:12",
-  dist: 14.7,
-  avgPace: "5:26/km",
-  avgPower: 289,
-  avgHR: 150,
-  // Power zone distribution (minutes)
-  powerZones: [
-    { zone:"Z1", label:"Recovery", min:22, pct:27, color:"#94D82D" },
-    { zone:"Z2", label:"Aeróbio",  min:18, pct:22, color:"#4DABF7" },
-    { zone:"Z3", label:"Tempo",    min: 8, pct:10, color:"#FCC419" },
-    { zone:"Z4", label:"Threshold",min: 9, pct:11, color:"#FF922B" },
-    { zone:"Z5", label:"VO₂max",   min:23, pct:29, color:"#FF3333" },
-  ],
-  hrZones: [
-    { zone:"Z1", label:"Recovery", min:24, pct:30, color:"#94D82D" },
-    { zone:"Z2", label:"Aeróbio",  min:22, pct:27, color:"#4DABF7" },
-    { zone:"Z3", label:"Tempo",    min:12, pct:15, color:"#FCC419" },
-    { zone:"Z4", label:"Threshold",min: 8, pct:10, color:"#FF922B" },
-    { zone:"Z5", label:"VO₂max",   min:14, pct:17, color:"#FF3333" },
-  ],
-  laps: [
-    { n:1,  type:"W/U",  dist:3.0,  time:"16:05", pace:"5:22", power:301, hr:141 },
-    { n:2,  type:"Rep",  dist:0.4,  time:"1:24",  pace:"3:24", power:447, hr:168 },
-    { n:3,  type:"Rec",  dist:0.2,  time:"1:31",  pace:"7:23", power:198, hr:153 },
-    { n:4,  type:"Rep",  dist:0.4,  time:"1:25",  pace:"3:26", power:441, hr:172 },
-    { n:5,  type:"Rec",  dist:0.2,  time:"1:32",  pace:"7:30", power:195, hr:162 },
-    { n:6,  type:"Rep",  dist:0.4,  time:"1:23",  pace:"3:21", power:453, hr:176 },
-    { n:7,  type:"Rec",  dist:0.2,  time:"1:33",  pace:"7:38", power:193, hr:167 },
-    { n:8,  type:"Rep",  dist:0.4,  time:"1:22",  pace:"3:19", power:458, hr:179 },
-    { n:9,  type:"Rec",  dist:0.2,  time:"1:34",  pace:"7:40", power:191, hr:169 },
-    { n:10, type:"Rep",  dist:0.4,  time:"1:23",  pace:"3:21", power:452, hr:181 },
-    { n:11, type:"Rec",  dist:0.2,  time:"1:35",  pace:"7:46", power:189, hr:172 },
-    { n:12, type:"Rep",  dist:0.4,  time:"1:22",  pace:"3:19", power:456, hr:183 },
-    { n:13, type:"Rec",  dist:0.2,  time:"1:34",  pace:"7:41", power:190, hr:174 },
-    { n:14, type:"Rep",  dist:0.4,  time:"1:22",  pace:"3:19", power:458, hr:184 },
-    { n:15, type:"Rec",  dist:0.2,  time:"1:36",  pace:"7:49", power:188, hr:176 },
-    { n:16, type:"Rep",  dist:0.4,  time:"1:21",  pace:"3:17", power:463, hr:186 },
-    { n:17, type:"Rec",  dist:0.2,  time:"1:36",  pace:"7:51", power:187, hr:178 },
-    { n:18, type:"Rep",  dist:0.4,  time:"1:21",  pace:"3:17", power:461, hr:187 },
-    { n:19, type:"Rec",  dist:0.2,  time:"1:37",  pace:"7:54", power:185, hr:179 },
-    { n:20, type:"Rep",  dist:0.4,  time:"1:21",  pace:"3:17", power:462, hr:188 },
-    { n:21, type:"Rec",  dist:0.2,  time:"1:38",  pace:"7:58", power:184, hr:181 },
-    { n:22, type:"Rep",  dist:0.4,  time:"1:20",  pace:"3:16", power:465, hr:189 },
-    { n:23, type:"Rec",  dist:0.2,  time:"1:37",  pace:"7:54", power:185, hr:182 },
-    { n:24, type:"Rep",  dist:0.4,  time:"1:20",  pace:"3:16", power:466, hr:190 },
-    { n:25, type:"C/D",  dist:2.0,  time:"10:58", pace:"5:29", power:298, hr:149 },
-  ],
-  decoupling: 10.8,
-  cadence: 177,
-};
-
-// Weekly zone distribution (minutes in each zone this week)
-const WEEK_ZONES_PW = [
-  { zone:"Z1", pct:52, min:210, color:"#94D82D" },
-  { zone:"Z2", pct:21, min: 85, color:"#4DABF7" },
-  { zone:"Z3", pct: 8, min: 32, color:"#FCC419" },
-  { zone:"Z4", pct: 9, min: 37, color:"#FF922B" },
-  { zone:"Z5", pct:10, min: 41, color:"#FF3333" },
-];
-const MONTH_ZONES_PW = [
-  { zone:"Z1", pct:55, min:880, color:"#94D82D" },
-  { zone:"Z2", pct:22, min:352, color:"#4DABF7" },
-  { zone:"Z3", pct: 7, min:112, color:"#FCC419" },
-  { zone:"Z4", pct: 8, min:128, color:"#FF922B" },
-  { zone:"Z5", pct: 8, min:128, color:"#FF3333" },
-];
-
-// Zone definitions
 const ZONE_DEFS = [
   { zone:"Z1", label:"Recovery",  pw:"< 315W",    hr:"< 133bpm",  pace:"> 5:30/km", color:"#94D82D", pct:80  },
   { zone:"Z2", label:"Aeróbio",   pw:"315–353W",  hr:"134–152",   pace:"5:00–5:30", color:"#4DABF7", pct:100 },
@@ -284,7 +155,6 @@ const ZONE_DEFS = [
   { zone:"Z5", label:"VO₂max",    pw:"> 413W",    hr:"> 178bpm",  pace:"< 3:35/km", color:"#FF3333", pct:120 },
 ];
 
-// Fitness projection
 const FITNESS_PROJ = [
   { w:"Atual", ctl:32, atl:44, tsb:-12 },
   { w:"W1",    ctl:38, atl:56, tsb:-18 },
@@ -304,11 +174,10 @@ const FITNESS_PROJ = [
   { w:"RACE",  ctl:58, atl:36, tsb: 22 },
 ];
 
-// Weeks plan
 const WEEKS = [
   { n:0,  phase:"Transição", dates:"Jun 21–26",    vol:70,  quality:["2×10min Z4","12×400m"],                  long:27, status:"done"    },
-  { n:1,  phase:"Build",     dates:"Jun 28–Jul 4", vol:90,  quality:["3×2km @LT2","10×400m @I"],              long:25, status:"current" },
-  { n:2,  phase:"Build",     dates:"Jul 5–11",     vol:95,  quality:["3×2km @LT2","6×800m @I"],               long:27, status:"future"  },
+  { n:1,  phase:"Build",     dates:"Jun 28–Jul 4", vol:90,  quality:["3×2km @LT2","10×400m @I"],              long:25, status:"done" },
+  { n:2,  phase:"Build",     dates:"Jul 5–11",     vol:95,  quality:["3×2km @LT2","6×800m @I"],               long:27, status:"current"  },
   { n:3,  phase:"Build",     dates:"Jul 12–18",    vol:100, quality:["2×20min T","12×400m @I"],               long:28, status:"future"  },
   { n:4,  phase:"Taper",     dates:"Jul 19–25",    vol:58,  quality:["4×1km @LT2","Strides pré-race"],        long:0,  status:"future", race:true },
   { n:5,  phase:"Build",     dates:"Jul 27–Ago 2", vol:70,  quality:["3×2km @LT2","8×400m @I leve"],         long:22, status:"future"  },
@@ -324,11 +193,8 @@ const WEEKS = [
   { n:15, phase:"Race",      dates:"Out 4–11",     vol:22,  quality:["Strides","Easy shakeout"],              long:0,  status:"future"  },
 ];
 
-const PHASE_COLORS = {
-  Transição:"#999", Build:"#4DABF7", Down:"#FCC419", Block:"#FF922B", Taper:"#9775FA", Race:"#E8FF00"
-};
+const PHASE_COLORS = { Transição:"#999", Build:"#4DABF7", Down:"#FCC419", Block:"#FF922B", Taper:"#9775FA", Race:"#E8FF00" };
 
-// Scenarios
 const SCENARIOS = [
   { key:"ruim",  label:"Cenário Ruim",     time:"2:55:00", pace:"4:09/km", color:"#FF3333", desc:"Calor, nutrição falha ou lesão menor." },
   { key:"base",  label:"Base Riegel",      time:"2:52:30", pace:"4:05/km", color:"#4DABF7", desc:"Extrapolação direta da Meia RJ 1:28:17." },
@@ -361,34 +227,37 @@ const NUTRITION = [
 ];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-const fmtDec = (v) => v > 0 ? `+${v}` : `${v}`;
 const TT = {
   contentStyle:{ background:"#111", border:"none", borderRadius:8, color:"#fff", fontSize:11, padding:"8px 12px" },
   labelStyle:{ color:"#aaa" }, cursor:"rgba(0,0,0,0.05)"
 };
 
+function fmtDuration(sec) {
+  if (!sec) return "–";
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = Math.round(sec%60);
+  return h>0 ? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}` : `${m}:${String(s).padStart(2,"0")}`;
+}
+function paceStr(distance_m, moving_time_s) {
+  if (!distance_m || !moving_time_s) return "–:––";
+  const secPerKm = moving_time_s / (distance_m / 1000);
+  const min = Math.floor(secPerKm / 60);
+  const sec = Math.round(secPerKm % 60);
+  return `${min}:${sec.toString().padStart(2,"0")}`;
+}
+function classifyActivity(a) {
+  const nameLower = (a.name || "").toLowerCase();
+  if (nameLower.includes("meia") || nameLower.includes("maratona") || nameLower.includes("race") || (a.name||"").includes("🏅")) return { label:"Race", color:"#9775FA" };
+  if ((a.distance_m || 0) >= 25000) return { label:"Longão", color:"#4DABF7" };
+  const hours = (a.moving_time_s || 1) / 3600;
+  const rtssPerHour = (a.rtss || 0) / hours;
+  if (rtssPerHour > 65) return { label:"Qualidade", color:"#FF3333" };
+  if (rtssPerHour > 35) return { label:"Z2", color:"#FCC419" };
+  return { label:"Z1", color:"#94D82D" };
+}
+
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
-function ZoneBar({ zones }) {
-  return (
-    <div className="zone-bar" style={{ gap:2 }}>
-      {zones.map(z => (
-        <div key={z.zone} className="zone-bar-seg" style={{ width:`${z.pct}%`, background:z.color }} title={`${z.zone}: ${z.pct}%`} />
-      ))}
-    </div>
-  );
-}
-
-function ZonePie({ zones, size=120 }) {
-  return (
-    <PieChart width={size} height={size}>
-      <Pie data={zones} dataKey="pct" cx={size/2-1} cy={size/2-1}
-           innerRadius={size*0.3} outerRadius={size*0.46} paddingAngle={2} strokeWidth={0}>
-        {zones.map((z,i) => <Cell key={i} fill={z.color} />)}
-      </Pie>
-    </PieChart>
-  );
-}
-
 function StatCard({ label, value, unit, sub, accent="#111" }) {
   return (
     <div className="card" style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -403,179 +272,132 @@ function StatCard({ label, value, unit, sub, accent="#111" }) {
 }
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
-function PageOverview() {
-  const laps = LAST_WORKOUT.laps;
-  const reps = laps.filter(l => l.type === "Rep");
-  const avgRepPace = reps.reduce((s,l) => s + parseFloat(l.pace.replace(":",".")), 0) / reps.length;
-  const avgRepPW   = Math.round(reps.reduce((s,l) => s + l.power, 0) / reps.length);
+function PageOverview({ activities, latestPmc, daysOut }) {
+  const last = activities[0];
+  const lastType = last ? classifyActivity(last) : null;
+  const avgPower = last ? Math.round(last.weighted_average_watts || last.average_watts || 0) : 0;
 
   return (
     <div className="page gap-14">
-      {/* Header row */}
       <div>
         <div className="page-title">GPS → Chicago 2026</div>
-        <div className="page-sub">Semana 1 de 15 · Build Phase · {DAYS_OUT} dias para o race day</div>
+        <div className="page-sub">Semana 2 de 15 · Build Phase · {daysOut} dias para o race day</div>
       </div>
 
-      {/* Top stats */}
       <div className="grid-4">
-        <StatCard label="Dias para a prova" value={DAYS_OUT} accent="#111" />
+        <StatCard label="Dias para a prova" value={daysOut} accent="#111" />
         <StatCard label="LT2 Pace" value="3:58" unit="/km" sub="393W · 178bpm" accent="#111" />
         <StatCard label="VDOT" value={VDOT} sub="Riegel 2:52:30" accent="#111" />
-        <StatCard label="CTL / TSB" value="32" unit=" / −12" sub="Fitness / Forma" accent="#111" />
+        <StatCard label="CTL / TSB" value={Math.round(latestPmc.ctl)} unit={` / ${Math.round(latestPmc.tsb)}`} sub="Fitness / Forma" accent="#111" />
       </div>
 
-      {/* Last workout header */}
-      <div className="card">
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
-          <div>
-            <div className="card-label">Último treino</div>
-            <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.3px" }}>{LAST_WORKOUT.name}</div>
-            <div style={{ fontSize:12, color:"#888", marginTop:2 }}>{LAST_WORKOUT.date}</div>
-          </div>
-          <div style={{ display:"flex", gap:20 }}>
-            <div style={{ textAlign:"center" }}>
-              <div className="stat-hero sm">{LAST_WORKOUT.dist}</div>
-              <div className="stat-unit">km</div>
-            </div>
-            <div style={{ textAlign:"center" }}>
-              <div className="stat-hero sm">{LAST_WORKOUT.totalTime}</div>
-              <div className="stat-unit">tempo</div>
-            </div>
-            <div style={{ textAlign:"center" }}>
-              <div className="stat-hero sm" style={{ color:"#FF922B" }}>{avgRepPW}W</div>
-              <div className="stat-unit">avg rep</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Zone distribution */}
-      <div className="grid-2">
-        {/* Power zones */}
+      {/* Last workout summary — dados reais do Strava */}
+      {last && (
         <div className="card">
-          <div className="card-label">Distribuição por Potência</div>
-          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-            <ZonePie zones={LAST_WORKOUT.powerZones} size={110} />
-            <div style={{ flex:1, display:"flex", flexDirection:"column", gap:6 }}>
-              {LAST_WORKOUT.powerZones.map(z => (
-                <div key={z.zone} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:z.color, flexShrink:0 }} />
-                  <div style={{ fontSize:11, color:"#888", width:60 }}>{z.zone} {z.label}</div>
-                  <div className="prog-bar" style={{ flex:1 }}>
-                    <div className="prog-bar-fill" style={{ width:`${z.pct}%`, background:z.color }} />
-                  </div>
-                  <div style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:"#111", width:32, textAlign:"right" }}>{z.pct}%</div>
-                </div>
-              ))}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
+            <div>
+              <div className="card-label">Último treino (Strava)</div>
+              <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.3px" }}>{last.name}</div>
+              <div style={{ fontSize:12, color:"#888", marginTop:2 }}>{last.start_date.slice(0,10)}</div>
+            </div>
+            <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
+              <div style={{ textAlign:"center" }}>
+                <div className="stat-hero sm">{((last.distance_m||0)/1000).toFixed(1)}</div>
+                <div className="stat-unit">km</div>
+              </div>
+              <div style={{ textAlign:"center" }}>
+                <div className="stat-hero sm">{fmtDuration(last.moving_time_s)}</div>
+                <div className="stat-unit">tempo</div>
+              </div>
+              <div style={{ textAlign:"center" }}>
+                <div className="stat-hero sm" style={{ color:"#FF922B" }}>{avgPower}W</div>
+                <div className="stat-unit">potência méd.</div>
+              </div>
+            </div>
+          </div>
+          <div className="grid-4" style={{ marginTop:16 }}>
+            <div>
+              <div className="card-label">Pace méd.</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{paceStr(last.distance_m, last.moving_time_s)}/km</div>
+            </div>
+            <div>
+              <div className="card-label">FC méd.</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{last.average_heartrate ? `${Math.round(last.average_heartrate)}bpm` : "–"}</div>
+            </div>
+            <div>
+              <div className="card-label">rTSS</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{last.rtss ? last.rtss.toFixed(0) : "–"}</div>
+            </div>
+            <div>
+              <div className="card-label">Tipo</div>
+              {lastType && <span className="type-badge" style={{ background:lastType.color+"22", color:lastType.color }}>{lastType.label}</span>}
             </div>
           </div>
         </div>
+      )}
 
-        {/* HR zones */}
-        <div className="card">
-          <div className="card-label">Distribuição por FC</div>
-          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-            <ZonePie zones={LAST_WORKOUT.hrZones} size={110} />
-            <div style={{ flex:1, display:"flex", flexDirection:"column", gap:6 }}>
-              {LAST_WORKOUT.hrZones.map(z => (
-                <div key={z.zone} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:z.color, flexShrink:0 }} />
-                  <div style={{ fontSize:11, color:"#888", width:60 }}>{z.zone} {z.label}</div>
-                  <div className="prog-bar" style={{ flex:1 }}>
-                    <div className="prog-bar-fill" style={{ width:`${z.pct}%`, background:z.color }} />
-                  </div>
-                  <div style={{ fontSize:11, fontFamily:"'DM Mono',monospace", color:"#111", width:32, textAlign:"right" }}>{z.pct}%</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Laps table */}
+      {/* Recent activities — dados reais do Strava */}
       <div className="card">
-        <div className="card-label">Laps do treino — {LAST_WORKOUT.name}</div>
+        <div className="card-label">Últimas atividades (sync Strava)</div>
         <div style={{ overflowX:"auto" }}>
           <table className="lap-table">
             <thead>
-              <tr>
-                <th>#</th><th>Tipo</th><th>Dist</th><th>Tempo</th><th>Pace</th><th>Power</th><th>HR</th>
-              </tr>
+              <tr><th>Data</th><th>Nome</th><th>Dist</th><th>Pace</th><th>Power</th><th>HR</th><th>rTSS</th><th>Tipo</th></tr>
             </thead>
             <tbody>
-              {laps.map(l => (
-                <tr key={l.n}>
-                  <td style={{ color:"#bbb", fontFamily:"'DM Mono',monospace" }}>{String(l.n).padStart(2,"0")}</td>
-                  <td>
-                    <span style={{
-                      padding:"2px 8px", borderRadius:20, fontSize:10, fontWeight:700,
-                      background: l.type==="Rep" ? "#FF333322" : l.type==="W/U"||l.type==="C/D" ? "#4DABF722" : "#f0f0f0",
-                      color: l.type==="Rep" ? "#FF3333" : l.type==="W/U"||l.type==="C/D" ? "#4DABF7" : "#888",
-                    }}>{l.type}</span>
-                  </td>
-                  <td style={{ fontFamily:"'DM Mono',monospace" }}>{l.dist}km</td>
-                  <td style={{ fontFamily:"'DM Mono',monospace" }}>{l.time}</td>
-                  <td style={{ fontFamily:"'DM Mono',monospace", color: l.type==="Rep" ? "#FF3333" : "#111", fontWeight: l.type==="Rep" ? 600 : 400 }}>{l.pace}</td>
-                  <td style={{ fontFamily:"'DM Mono',monospace", color: l.power > 413 ? "#FF3333" : l.power > 383 ? "#FF922B" : "#111" }}>{l.power}W</td>
-                  <td style={{ fontFamily:"'DM Mono',monospace", color: l.hr > 178 ? "#FF3333" : l.hr > 165 ? "#FF922B" : "#111" }}>{l.hr}</td>
-                </tr>
-              ))}
+              {activities.slice(0,12).map(a => {
+                const t = classifyActivity(a);
+                const pw = Math.round(a.weighted_average_watts || a.average_watts || 0);
+                return (
+                  <tr key={a.id}>
+                    <td style={{ color:"#999", fontFamily:"'DM Mono',monospace", fontSize:11 }}>{a.start_date.slice(5,10)}</td>
+                    <td style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.name}</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{((a.distance_m||0)/1000).toFixed(1)}km</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{paceStr(a.distance_m, a.moving_time_s)}</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{pw||"–"}{pw?"W":""}</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{a.average_heartrate ? Math.round(a.average_heartrate) : "–"}</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{a.rtss ? a.rtss.toFixed(0) : "–"}</td>
+                    <td><span className="type-badge" style={{ background:t.color+"22", color:t.color }}>{t.label}</span></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Biomechanics */}
+      {/* Biomechanics — referência manual (não vem do Strava) */}
       <div className="grid-2">
         <div className="card">
-          <div className="card-label">Decoupling — Último Longo</div>
-          <div className="stat-hero" style={{ color: LAST_WORKOUT.decoupling > 7 ? "#FF922B" : "#94D82D" }}>
-            {LAST_WORKOUT.decoupling}%
-          </div>
-          <div style={{ fontSize:11, color:"#888", marginTop:6 }}>Target &lt;7% · 27km Jun 19</div>
-          <div style={{ marginTop:10 }}>
-            <div className="prog-bar">
-              <div className="prog-bar-fill" style={{ width:`${Math.min(LAST_WORKOUT.decoupling/15*100, 100)}%`, background: LAST_WORKOUT.decoupling > 7 ? "#FF922B" : "#94D82D" }} />
-            </div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#bbb", marginTop:4 }}>
-              <span>0%</span><span style={{ color:"#94D82D" }}>7% ideal</span><span>15%</span>
-            </div>
-          </div>
+          <div className="card-label">Decoupling — Referência manual</div>
+          <div className="stat-hero" style={{ color:"#FF922B" }}>10.8%</div>
+          <div style={{ fontSize:11, color:"#888", marginTop:6 }}>Target &lt;7% · último teste 27km</div>
         </div>
         <div className="card">
-          <div className="card-label">Cadência Média — Z2</div>
-          <div className="stat-hero" style={{ color: LAST_WORKOUT.cadence >= 180 ? "#94D82D" : "#FF922B" }}>
-            {LAST_WORKOUT.cadence}
-          </div>
+          <div className="card-label">Cadência Z2 — Referência manual</div>
+          <div className="stat-hero" style={{ color:"#FF922B" }}>177</div>
           <div style={{ fontSize:11, color:"#888", marginTop:6 }}>spm · Target 180–182spm</div>
-          <div style={{ marginTop:10 }}>
-            <div className="prog-bar">
-              <div className="prog-bar-fill" style={{ width:`${(LAST_WORKOUT.cadence - 165) / 25 * 100}%`, background: LAST_WORKOUT.cadence >= 180 ? "#94D82D" : "#FF922B" }} />
-            </div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#bbb", marginTop:4 }}>
-              <span>165</span><span style={{ color:"#94D82D" }}>180 target</span><span>190</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function PageFitness() {
+function PageFitness({ pmc, latestPmc }) {
+  const hist = pmc.slice(-30).map(p => ({ w: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+
   return (
     <div className="page gap-14">
       <div>
         <div className="page-title">Fitness & Carga</div>
-        <div className="page-sub">Modelo Banister CTL/ATL/TSB · Projeção até Chicago</div>
+        <div className="page-sub">Modelo Banister CTL/ATL/TSB · Dados reais + Projeção até Chicago</div>
       </div>
 
       <div className="grid-3">
         {[
-          { l:"CTL · Fitness", v:32, d:"Crônico 42 dias", c:"#4DABF7" },
-          { l:"ATL · Fadiga",  v:44, d:"Agudo 7 dias",    c:"#FF3333" },
-          { l:"TSB · Forma",   v:"-12", d:"Zona de construção", c:"#FCC419" },
+          { l:"CTL · Fitness", v:Math.round(latestPmc.ctl), d:"Crônico 42 dias", c:"#4DABF7" },
+          { l:"ATL · Fadiga",  v:Math.round(latestPmc.atl), d:"Agudo 7 dias",    c:"#FF3333" },
+          { l:"TSB · Forma",   v:Math.round(latestPmc.tsb), d:"Zona de construção", c:"#FCC419" },
         ].map(m => (
           <div key={m.l} className="card" style={{ borderTop:`3px solid ${m.c}` }}>
             <div className="card-label">{m.l}</div>
@@ -586,7 +408,23 @@ function PageFitness() {
       </div>
 
       <div className="card">
-        <div className="card-label">Projeção CTL / ATL / TSB → Race Day</div>
+        <div className="card-label">Histórico Real — Últimos 30 dias</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={hist} margin={{top:4,right:8,bottom:0,left:-24}}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="w" tick={{fill:"#bbb", fontSize:9}} />
+            <YAxis tick={{fill:"#bbb", fontSize:10}} />
+            <Tooltip {...TT} />
+            <ReferenceLine y={0} stroke="#e0e0e0" />
+            <Line type="monotone" dataKey="ctl" stroke="#4DABF7" strokeWidth={2} dot={false} name="CTL" />
+            <Line type="monotone" dataKey="atl" stroke="#FF3333" strokeWidth={1.5} dot={false} strokeDasharray="5 3" name="ATL" />
+            <Line type="monotone" dataKey="tsb" stroke="#FCC419" strokeWidth={2} dot={false} name="TSB" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="card">
+        <div className="card-label">Projeção CTL / ATL / TSB → Race Day (plano)</div>
         <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
           Zona verde TSB: +15 a +25 no race day · 🏅 = Meia SP City 26 Jul
         </div>
@@ -607,7 +445,7 @@ function PageFitness() {
       </div>
 
       <div className="card">
-        <div className="card-label">Volume por Semana — 90–120km/sem</div>
+        <div className="card-label">Volume por Semana — 90–120km/sem (plano)</div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={WEEKS.filter(w=>w.n>0)} margin={{top:4,right:8,bottom:0,left:-24}}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -658,7 +496,7 @@ function PageFitness() {
             { l:"Cadência Z2",      curr:"177spm", tgt:"180–182spm" },
             { l:"Pace Z2 natural",  curr:"5:00",   tgt:"4:55/km"    },
             { l:"LT2 Pace (S6)",    curr:"3:58",   tgt:"3:52/km"    },
-            { l:"TSB race day",     curr:"-12",    tgt:"+18 a +22"  },
+            { l:"TSB race day",     curr:String(Math.round(latestPmc.tsb)), tgt:"+18 a +22"  },
           ].map((o,i) => (
             <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom: i<4 ? "1px solid #f5f5f5" : "none" }}>
               <div style={{ fontSize:12, color:"#555" }}>{o.l}</div>
@@ -682,26 +520,15 @@ function PageZones() {
         <div className="page-title">Zonas de Treino</div>
         <div className="page-sub">Calculadas a partir do LT2: 393W · 178bpm · 3:58/km</div>
       </div>
-
-      {/* Zone definitions table */}
       <div className="card">
         <div className="card-label">Definição das Zonas</div>
         <div style={{ overflowX:"auto" }}>
           <table className="lap-table">
-            <thead>
-              <tr>
-                <th>Zona</th><th>Nome</th><th>Potência</th><th>FC</th><th>Pace</th><th>% FTP</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Zona</th><th>Nome</th><th>Potência</th><th>FC</th><th>Pace</th><th>% FTP</th></tr></thead>
             <tbody>
               {ZONE_DEFS.map(z => (
                 <tr key={z.zone}>
-                  <td>
-                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      <div style={{ width:10, height:10, borderRadius:"50%", background:z.color }} />
-                      <span style={{ fontWeight:700, color:z.color }}>{z.zone}</span>
-                    </div>
-                  </td>
+                  <td><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:z.color }} /><span style={{ fontWeight:700, color:z.color }}>{z.zone}</span></div></td>
                   <td style={{ color:"#555" }}>{z.label}</td>
                   <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12 }}>{z.pw}</td>
                   <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12 }}>{z.hr}</td>
@@ -714,69 +541,7 @@ function PageZones() {
         </div>
         <div style={{ marginTop:14, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888" }}>
           <b style={{ color:"#111" }}>Nota:</b> Zonas baseadas em potência (Stryd) como âncora primária.
-          FC é referência secundária — pode variar com calor, altitude e fadiga.
-          Recalibração LT2 prevista para Semana 6 (Ago 5) com teste de 30min.
-        </div>
-      </div>
-
-      {/* Week distribution */}
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-label">Distribuição da Semana · Por Potência</div>
-          <div style={{ display:"flex", alignItems:"center", gap:20, marginBottom:14 }}>
-            <ZonePie zones={WEEK_ZONES_PW} size={120} />
-            <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8 }}>
-              {WEEK_ZONES_PW.map(z => (
-                <div key={z.zone} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:z.color, flexShrink:0 }} />
-                  <div style={{ fontSize:11, color:"#888", flex:1 }}>{z.zone}</div>
-                  <div style={{ fontSize:11, fontFamily:"'DM Mono',monospace" }}>{z.min}min</div>
-                  <div style={{ fontSize:12, fontFamily:"'DM Mono',monospace", fontWeight:600, width:36, textAlign:"right", color:z.color }}>{z.pct}%</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <ZoneBar zones={WEEK_ZONES_PW} />
-          <div style={{ fontSize:11, color:"#bbb", marginTop:6 }}>
-            Polarização: {WEEK_ZONES_PW[0].pct + WEEK_ZONES_PW[1].pct}% Z1+Z2 · {WEEK_ZONES_PW[3].pct + WEEK_ZONES_PW[4].pct}% Z4+Z5
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-label">Distribuição do Mês · Por Potência</div>
-          <div style={{ display:"flex", alignItems:"center", gap:20, marginBottom:14 }}>
-            <ZonePie zones={MONTH_ZONES_PW} size={120} />
-            <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8 }}>
-              {MONTH_ZONES_PW.map(z => (
-                <div key={z.zone} style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ width:8, height:8, borderRadius:"50%", background:z.color, flexShrink:0 }} />
-                  <div style={{ fontSize:11, color:"#888", flex:1 }}>{z.zone}</div>
-                  <div style={{ fontSize:11, fontFamily:"'DM Mono',monospace" }}>{z.min}min</div>
-                  <div style={{ fontSize:12, fontFamily:"'DM Mono',monospace", fontWeight:600, width:36, textAlign:"right", color:z.color }}>{z.pct}%</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <ZoneBar zones={MONTH_ZONES_PW} />
-          <div style={{ fontSize:11, color:"#bbb", marginTop:6 }}>
-            Polarização: {MONTH_ZONES_PW[0].pct + MONTH_ZONES_PW[1].pct}% Z1+Z2 · {MONTH_ZONES_PW[3].pct + MONTH_ZONES_PW[4].pct}% Z4+Z5
-          </div>
-        </div>
-      </div>
-
-      {/* Polarization note */}
-      <div className="card" style={{ background:"#111", color:"#fff", border:"none" }}>
-        <div style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
-          <div style={{ fontSize:24 }}>📊</div>
-          <div>
-            <div style={{ fontSize:14, fontWeight:700, marginBottom:6 }}>Distribuição Polarizada — Modelo Seiler</div>
-            <div style={{ fontSize:13, color:"#aaa", lineHeight:1.7 }}>
-              O modelo polarizado de Seiler recomenda ~<b style={{ color:"#E8FF00" }}>80% do volume em Z1+Z2</b> (abaixo do LT1)
-              e ~<b style={{ color:"#E8FF00" }}>20% em Z4+Z5</b> (acima do LT2), evitando a "zona cinzenta" (Z3).
-              Sua distribuição atual de {MONTH_ZONES_PW[0].pct + MONTH_ZONES_PW[1].pct}%/{MONTH_ZONES_PW[2].pct}%/{MONTH_ZONES_PW[3].pct + MONTH_ZONES_PW[4].pct}%
-              (fácil/médio/duro) está <b style={{ color:"#94D82D" }}>dentro do modelo recomendado</b>.
-            </div>
-          </div>
+          Distribuição de tempo por zona por treino exige dados de stream do Strava (ainda não sincronizados) — fale comigo se quiser que eu adicione isso.
         </div>
       </div>
     </div>
@@ -792,16 +557,11 @@ function PagePlan() {
       </div>
       <div className="gap-14">
         {WEEKS.map(w => (
-          <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`}
-            style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
+          <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`} style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
               <div>
-                <span style={{ fontSize:10, fontWeight:700, color: PHASE_COLORS[w.phase]||"#888", textTransform:"uppercase", letterSpacing:"0.1em" }}>
-                  {w.phase}
-                </span>
-                {w.status==="current" && (
-                  <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>
-                )}
+                <span style={{ fontSize:10, fontWeight:700, color: PHASE_COLORS[w.phase]||"#888", textTransform:"uppercase", letterSpacing:"0.1em" }}>{w.phase}</span>
+                {w.status==="current" && <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>}
                 <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>Semana {w.n} · {w.dates}</div>
               </div>
               <div style={{ textAlign:"right" }}>
@@ -810,19 +570,12 @@ function PagePlan() {
               </div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-              {w.quality.map((q,i) => (
-                <div key={i} style={{ fontSize:12, color:"#666", display:"flex", gap:6 }}>
-                  <span style={{ color: i===0 ? "#FF922B" : "#4DABF7" }}>{i===0?"⚡":"⚡"}</span>{q}
-                </div>
-              ))}
+              {w.quality.map((q,i) => (<div key={i} style={{ fontSize:12, color:"#666", display:"flex", gap:6 }}><span style={{ color:"#FF922B" }}>⚡</span>{q}</div>))}
               {w.long > 0 && <div style={{ fontSize:12, color:"#9775FA" }}>🏃 Longão {w.long}km Z2</div>}
               {w.race && (
                 <div style={{ marginTop:6, background:"#FFF8DC", border:"1px solid #E8FF0088", borderRadius:8, padding:"8px 12px", display:"flex", alignItems:"center", gap:10 }}>
                   <span style={{ fontSize:18 }}>🏅</span>
-                  <div>
-                    <div style={{ fontSize:12, fontWeight:700, color:"#111" }}>Meia SP City · Jul 26</div>
-                    <div style={{ fontSize:11, color:"#888" }}>Alvo 1:20h · 3:47/km · validação intermediária</div>
-                  </div>
+                  <div><div style={{ fontSize:12, fontWeight:700, color:"#111" }}>Meia SP City · Jul 26</div><div style={{ fontSize:11, color:"#888" }}>Alvo 1:20h · 3:47/km · validação intermediária</div></div>
                 </div>
               )}
             </div>
@@ -840,52 +593,22 @@ function PageProjecao() {
         <div className="page-title">Projeção Chicago</div>
         <div className="page-sub">Cenários de performance · Estratégia de prova · Protocolo de nutrição</div>
       </div>
-
-      {/* Scenarios */}
       <div className="grid-2">
         {SCENARIOS.map(s => (
-          <div key={s.key} className={`scenario-card ${s.goal?"goal":""}`}
-            style={{ borderLeftWidth:4, borderLeftColor:s.color, borderLeftStyle:"solid" }}>
-            <div style={{ fontSize:10, fontWeight:700, color:s.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>
-              {s.label} {s.goal && "🎯"}
-            </div>
+          <div key={s.key} className={`scenario-card ${s.goal?"goal":""}`} style={{ borderLeftWidth:4, borderLeftColor:s.color, borderLeftStyle:"solid" }}>
+            <div style={{ fontSize:10, fontWeight:700, color:s.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>{s.label} {s.goal && "🎯"}</div>
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:500, color:"#111", lineHeight:1 }}>{s.time}</div>
             <div style={{ fontSize:13, color:s.color, marginTop:4, marginBottom:8, fontFamily:"'DM Mono',monospace" }}>{s.pace}</div>
             <div style={{ fontSize:12, color:"#888", lineHeight:1.5 }}>{s.desc}</div>
           </div>
         ))}
       </div>
-
-      {/* Fitness projection */}
-      <div className="card">
-        <div className="card-label">Forma projetada — CTL e TSB</div>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={FITNESS_PROJ} margin={{top:4,right:8,bottom:0,left:-24}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="w" tick={{fill:"#bbb", fontSize:9}} />
-            <YAxis tick={{fill:"#bbb", fontSize:10}} />
-            <Tooltip {...TT} />
-            <ReferenceLine y={15} stroke="#94D82D" strokeDasharray="4 3" label={{value:"TSB min",fill:"#94D82D",fontSize:9}} />
-            <ReferenceLine y={25} stroke="#94D82D" strokeDasharray="4 3" label={{value:"TSB max",fill:"#94D82D",fontSize:9}} />
-            <ReferenceLine y={0}  stroke="#e0e0e0" />
-            <Line type="monotone" dataKey="ctl" stroke="#4DABF7" strokeWidth={2} dot={false} name="CTL" />
-            <Line type="monotone" dataKey="tsb" stroke="#FCC419" strokeWidth={2.5} dot={{r:3,fill:"#FCC419"}} name="TSB" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Pace strategy */}
       <div className="card">
         <div className="card-label">Estratégia de Pace · Negative Split</div>
-        <div style={{ fontSize:12, color:"#888", marginBottom:14 }}>
-          1ª metade 1:24:30 (4:01/km) · 2ª metade 1:23:30 (3:58/km)
-        </div>
+        <div style={{ fontSize:12, color:"#888", marginBottom:14 }}>1ª metade 1:24:30 (4:01/km) · 2ª metade 1:23:30 (3:58/km)</div>
         <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
           {PACE_STRATEGY.map((s,i) => (
-            <div key={i} style={{
-              display:"flex", alignItems:"center", gap:12, padding:"8px 12px",
-              borderRadius:8, background: i >= 6 ? "#FFF5F5" : "#fafafa",
-            }}>
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 12px", borderRadius:8, background: i >= 6 ? "#FFF5F5" : "#fafafa" }}>
               <div style={{ fontSize:11, color:"#bbb", width:42, flexShrink:0, fontFamily:"'DM Mono',monospace" }}>km {s.km}</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:500, color: i>=6 ? "#FF3333" : "#111", width:44 }}>{s.pace}</div>
               <div style={{ fontSize:11, color:"#FF922B", fontFamily:"'DM Mono',monospace", width:80 }}>{s.pw}</div>
@@ -894,31 +617,22 @@ function PageProjecao() {
           ))}
         </div>
       </div>
-
-      {/* Nutrition */}
       <div className="card">
         <div className="card-label">Protocolo de Nutrição · Race Day</div>
-        <div style={{ fontSize:11, color:"#888", marginBottom:14 }}>
-          ~150–180g CHO total · Mistura glicose:frutose 2:1 · Sódio 500mg/h
-        </div>
+        <div style={{ fontSize:11, color:"#888", marginBottom:14 }}>~150–180g CHO total · Mistura glicose:frutose 2:1 · Sódio 500mg/h</div>
         <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
           {NUTRITION.map((n,i) => (
             <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"10px 0", borderBottom: i<NUTRITION.length-1 ? "1px solid #f5f5f5" : "none" }}>
               <div style={{ background:"#f0f0f0", borderRadius:8, padding:"4px 10px", fontSize:11, fontWeight:700, color:"#111", fontFamily:"'DM Mono',monospace", minWidth:52, textAlign:"center", flexShrink:0 }}>{n.time}</div>
               <div style={{ fontSize:16, flexShrink:0 }}>{n.icon}</div>
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, color:"#111" }}>{n.action}</div>
-                <div style={{ fontSize:12, color:"#888", marginTop:1 }}>{n.detail}</div>
-              </div>
+              <div><div style={{ fontSize:13, fontWeight:600, color:"#111" }}>{n.action}</div><div style={{ fontSize:12, color:"#888", marginTop:1 }}>{n.detail}</div></div>
             </div>
           ))}
         </div>
         <div style={{ marginTop:12, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888", lineHeight:1.6 }}>
-          💧 <b style={{ color:"#111" }}>Hidratação:</b> 400–500ml/h esperado em Chicago (~10°C). Eueidratação na manhã — urina clara. Não beber em excesso: risco de hiponatremia.
+          💧 <b style={{ color:"#111" }}>Hidratação:</b> 400–500ml/h esperado em Chicago (~10°C). Euidratação na manhã — urina clara. Não beber em excesso: risco de hiponatremia.
         </div>
       </div>
-
-      {/* Mental strategy */}
       <div className="card" style={{ background:"#111", color:"#fff", border:"none" }}>
         <div className="card-label" style={{ color:"#555" }}>Estratégia Mental · 4 Fases</div>
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -930,10 +644,7 @@ function PageProjecao() {
           ].map((f,i) => (
             <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:f.c, width:44, paddingTop:2, flexShrink:0 }}>km {f.km}</div>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700, color:f.c }}>{f.label}</div>
-                <div style={{ fontSize:12, color:"#888", marginTop:2, lineHeight:1.5 }}>{f.desc}</div>
-              </div>
+              <div><div style={{ fontSize:13, fontWeight:700, color:f.c }}>{f.label}</div><div style={{ fontSize:12, color:"#888", marginTop:2, lineHeight:1.5 }}>{f.desc}</div></div>
             </div>
           ))}
         </div>
@@ -953,51 +664,77 @@ const PAGES = [
 
 function App() {
   const [page, setPage] = useState("overview");
-  const Current = PAGES.find(p => p.id === page)?.component || PageOverview;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [pmc, setPmc] = useState([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data: acts, error: e1 } = await sb.from("strava_activities").select("*").order("start_date", { ascending: false }).limit(30);
+        if (e1) throw e1;
+        const { data: pmcData, error: e2 } = await sb.from("daily_pmc").select("*").order("date", { ascending: true });
+        if (e2) throw e2;
+        setActivities(acts || []);
+        setPmc(pmcData || []);
+      } catch (err) {
+        setError(String(err.message || err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const daysOut = Math.ceil((RACE_DATE - new Date()) / 86400000);
+  const latestPmc = pmc.length > 0 ? pmc[pmc.length - 1] : { ctl:0, atl:0, tsb:0 };
+
+  if (loading) {
+    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#888" }}>Carregando dados do Supabase...</div>;
+  }
+  if (error) {
+    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#FF3333", padding:20, textAlign:"center" }}>Erro ao carregar dados: {error}</div>;
+  }
+
+  const pageInfo = PAGES.find(p => p.id === page) || PAGES[0];
+  const Current = pageInfo.component;
+  const pageProps = page === "overview" ? { activities, latestPmc, daysOut }
+                   : page === "fitness"  ? { pmc, latestPmc }
+                   : {};
 
   return (
     <div className="app-shell">
-      {/* Desktop sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
           <div className="race-target">2:48:00</div>
           <div className="race-label">Chicago Marathon · Out 11</div>
-          <div className="race-days">
-            <span>{DAYS_OUT}</span> dias · <span>{Math.ceil(DAYS_OUT/7)}</span> semanas
-          </div>
+          <div className="race-days"><span>{daysOut}</span> dias · <span>{Math.ceil(daysOut/7)}</span> semanas</div>
         </div>
         <nav className="sidebar-nav">
           {PAGES.map(p => (
-            <button key={p.id} className={`nav-item ${page===p.id?"active":""}`}
-              onClick={() => setPage(p.id)}>
-              <span className="nav-icon">{p.icon}</span>
-              {p.label}
+            <button key={p.id} className={`nav-item ${page===p.id?"active":""}`} onClick={() => setPage(p.id)}>
+              <span className="nav-icon">{p.icon}</span>{p.label}
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <p>GPS · VDOT 58 · LT2 393W<br/>Stryd · Garmin · Strava<br/>Strava sync Jul 11 2026</p>
+          <p>GPS · VDOT 58 · LT2 393W<br/>Stryd · Garmin · Strava<br/>Dados ao vivo via Supabase</p>
         </div>
       </aside>
 
-      {/* Mobile header + tabs */}
       <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
         <header className="mobile-header">
           <div className="logo">2:48:00</div>
-          <div style={{ fontSize:11, color:"#888" }}>Chicago · {DAYS_OUT}d</div>
+          <div style={{ fontSize:11, color:"#888" }}>Chicago · {daysOut}d</div>
         </header>
         <div className="mobile-tabs">
           {PAGES.map(p => (
-            <button key={p.id} className={`mobile-tab ${page===p.id?"active":""}`}
-              onClick={() => setPage(p.id)}>
-              {p.label}
-            </button>
+            <button key={p.id} className={`mobile-tab ${page===p.id?"active":""}`} onClick={() => setPage(p.id)}>{p.label}</button>
           ))}
         </div>
-
-        {/* Page content */}
         <main className="main-content">
-          <Current />
+          <Current {...pageProps} />
         </main>
       </div>
     </div>
