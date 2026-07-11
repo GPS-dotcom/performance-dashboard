@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GPS · Chicago Marathon Dashboard</title>
+<style>
+  html, body { margin:0; padding:0; background:#0A0A0F; }
+  * { box-sizing: border-box; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18",
+    "react-dom/client": "https://esm.sh/react-dom@18/client",
+    "recharts": "https://esm.sh/recharts@2?external=react,react-dom",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
+</script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-type="module" data-presets="react">
+import React, { useState, useEffect, useMemo } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceLine, Cell
+} from "recharts";
+import { createClient } from "@supabase/supabase-js";
+
+// ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://wmkfhvnwpvcsiwaxjefs.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indta2Zodm53cHZjc2l3YXhqZWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MjM5MTgsImV4cCI6MjA5OTI5OTkxOH0.dhwuneznZRzUrbs-g557nr8nV_-4_CYzqzooDJrtzSY";
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const RACE_DATE = new Date("2026-10-11");
+const VDOT      = 58;
+
+const TYPE_COLOR = {
+  Z1:"#3A3A5A", Z2:"#4CC9F0", Quality:"#E63946", Long:"#7B2FBE", Race:"#FFD700",
+};
+const TYPE_LABEL = {
+  Z1:"Z1 Fácil", Z2:"Z2 Aeróbio", Quality:"Qualidade (T/I/CI)", Long:"Longão", Race:"Prova",
+};
+
+function classifyActivity(a) {
+  const nameLower = (a.name || "").toLowerCase();
+  if (nameLower.includes("meia") || nameLower.includes("maratona") || nameLower.includes("race") || (a.name||"").includes("🏅")) return "Race";
+  if ((a.distance_m || 0) >= 25000) return "Long";
+  const hours = (a.moving_time_s || 1) / 3600;
+  const rtssPerHour = (a.rtss || 0) / hours;
+  if (rtssPerHour > 65) return "Quality";
+  if (rtssPerHour > 35) return "Z2";
+  return "Z1";
+}
+
+function paceStr(distance_m, moving_time_s) {
+  if (!distance_m || !moving_time_s) return "–:––";
+  const secPerKm = moving_time_s / (distance_m / 1000);
+  const min = Math.floor(secPerKm / 60);
+  const sec = Math.round(secPerKm % 60);
+  return `${min}:${sec.toString().padStart(2,"0")}`;
+}
+
+// ─── 15-WEEK PLAN (referência fixa do plano) ──────────────────────────────────
+const WEEKS = [
+  { n:0,  label:"Pré-Build",           phase:"Transição", dates:"Jun 21–26",    vol:70,  quality:["2×10min Z4","12×400m"],            long:27, status:"done"    },
+  { n:1,  label:"Semana 1",            phase:"Build",     dates:"Jun 28–Jul 4", vol:90,  quality:["3×2km @LT2","10×400m @I"],         long:25, status:"done" },
+  { n:2,  label:"Semana 2",            phase:"Build",     dates:"Jul 5–11",     vol:95,  quality:["3×2km @LT2","6×800m @I"],          long:27, status:"current"  },
+  { n:3,  label:"Semana 3",            phase:"Build",     dates:"Jul 12–18",    vol:100, quality:["2×20min T","12×400m @I"],          long:28, status:"future"  },
+  { n:4,  label:"Semana 4 · Mini-taper",phase:"Taper",   dates:"Jul 19–25",    vol:58,  quality:["Ter: 4×1km @LT2","Qui: St-3 pre-race strides","Sab: shakeout 4km + strides"], long:0, race:true, status:"future" },
+  { n:5,  label:"Semana 5 · Pós-prova",phase:"Build",    dates:"Jul 27–Ago 2", vol:70,  quality:["Qua: 3×2km @LT2 (retorno)","Sex: 8×400m @I leve"],long:22, status:"future" },
+  { n:6,  label:"Semana 6",            phase:"Build",     dates:"Ago 2–8",      vol:110, quality:["Ladder CI","LT2 Field Test 30min"], long:32, status:"future"  },
+  { n:7,  label:"Semana 7",            phase:"Build",     dates:"Ago 9–15",     vol:115, quality:["CI-5 M-pace","6×800m @I"],         long:32, status:"future"  },
+  { n:8,  label:"Semana 8",            phase:"Down",      dates:"Ago 16–22",    vol:80,  quality:["3×2km @LT2","8×400m @I"],          long:26, status:"future"  },
+  { n:9,  label:"Semana 9",            phase:"Block",     dates:"Ago 23–29",    vol:112, quality:["CI-5 Canova","VO2 Misto I-6"],     long:33, status:"future"  },
+  { n:10, label:"Semana 10",           phase:"Block",     dates:"Ago 30–Set 5", vol:118, quality:["Tempo Prog. T-3","Ladder VO2 I-3"],long:35, status:"future"  },
+  { n:11, label:"Semana 11",           phase:"Block",     dates:"Set 6–12",     vol:120, quality:["2×20min T","I-6 Máximo"],          long:35, status:"future"  },
+  { n:12, label:"Semana 12",           phase:"Down",      dates:"Set 13–19",    vol:82,  quality:["T Split 2×15","6×800m"],           long:28, status:"future"  },
+  { n:13, label:"Semana 13",           phase:"Taper",     dates:"Set 20–26",    vol:65,  quality:["3×2km @LT2","Fast Reps R-6"],      long:24, status:"future"  },
+  { n:14, label:"Semana 14",           phase:"Taper",     dates:"Set 27–Out 3", vol:45,  quality:["2×15min T","Strides"],             long:16, status:"future"  },
+  { n:15, label:"Race Week",           phase:"Race",      dates:"Out 4–11",     vol:22,  quality:["Strides","Easy shakeout"],         long:0,  status:"future"  },
+];
+const PHASE_COLOR = { Transição:"#6B6B8A", Build:"#4CC9F0", Down:"#E8A838", Block:"#E63946", Taper:"#9B5DE5", Race:"#FFD700" };
+
+const PACES = [
+  { zone:"Z1 / Recovery",    pace:"5:30–6:00/km", bpm:"<133",     watts:"<250W",     use:"Rodagem, volta à calma" },
+  { zone:"Z2 / Aeróbio",     pace:"5:00–5:30/km", bpm:"134–152",  watts:"250–310W",  use:"Longão, rodagem longo" },
+  { zone:"M-pace / Maratona",pace:"4:00/km",      bpm:"165–172",  watts:"350–370W",  use:"Blocos CI-5, long progressivo" },
+  { zone:"LT2 / Threshold",  pace:"3:55–4:05/km", bpm:"173–179",  watts:"380–400W",  use:"T, CI, cruise intervals" },
+  { zone:"I-pace / VO₂max",  pace:"3:25–3:35/km", bpm:">178",     watts:"430–460W",  use:"Intervalos 400m–1200m" },
+  { zone:"R-pace / Speed",   pace:"3:00–3:10/km", bpm:"N/A",      watts:">480W",     use:"200–400m, economia" },
+];
+
+const SCENARIOS = [
+  { key:"ruim",      label:"Cenário Ruim",       time:"2:55:00", pace:"4:09/km", color:"#E63946",
+    desc:"Calor excessivo, nutrição falha ou lesão menor. TSB abaixo de +10 no race day." },
+  { key:"base",      label:"Projeção Atual",      time:"2:52:30", pace:"4:05/km", color:"#4CC9F0",
+    desc:"Base na Meia RJ 1:28:17 → Riegel 2:52:30. Sem melhora adicional de LT2." },
+  { key:"meta",      label:"Meta Oficial 🎯",     time:"2:48:00", pace:"4:00/km", color:"#FFD700",
+    desc:"LT2 evolui de 3:58 → 3:52/km. Decoupling <7%. TSB +20 no race day. Condições Chicago típicas (~10°C)." },
+  { key:"bom",       label:"Cenário Bom",         time:"2:45:00", pace:"3:55/km", color:"#06D6A0",
+    desc:"LT2 → 3:50/km. Corrida perfeita: negative split, nutrição impecável, clima frio." },
+  { key:"excelente", label:"Cenário Excelente",   time:"2:42:00", pace:"3:51/km", color:"#9B5DE5",
+    desc:"LT2 → 3:46/km. Todas as variáveis alinhadas. PR absoluto e BQ implícito." },
+];
+
+const PACE_STRATEGY = [
+  { km:"0–5",    pace:"4:02", pw:"380–390W", note:"Saída controlada" },
+  { km:"5–10",   pace:"4:01", pw:"383–393W", note:"Settle in" },
+  { km:"10–15",  pace:"4:01", pw:"385–395W", note:"Ritmo cruzeiro" },
+  { km:"15–20",  pace:"4:00", pw:"388–398W", note:"Halfway push" },
+  { km:"20–25",  pace:"4:00", pw:"390–400W", note:"Gel + cafeína" },
+  { km:"25–30",  pace:"3:59", pw:"390–403W", note:"Comprometer" },
+  { km:"30–35",  pace:"3:58", pw:"393–405W", note:"Cafeína 200mg" },
+  { km:"35–40",  pace:"3:57", pw:"395–410W", note:"All in" },
+  { km:"40–42",  pace:"3:55", pw:"400–420W", note:"Sprint final 🔥" },
+];
+
+const NUTRITION = [
+  { time:"-3h",    icon:"🍌", action:"Café da manhã",    detail:"Aveia + banana + café · 150g CHO total" },
+  { time:"-45min", icon:"🟡", action:"Gel pré-race",     detail:"1 gel 25g CHO + 300ml água · ativar reservas" },
+  { time:"km 8",   icon:"🟡", action:"1º Gel",           detail:"30g CHO · água no posto · não esperar sede" },
+  { time:"km 16",  icon:"🟡", action:"2º Gel",           detail:"30g CHO · isotônico com sódio" },
+  { time:"km 24",  icon:"☕", action:"3º Gel + cafeína", detail:"30g CHO + 200mg cafeína · ponto crítico" },
+  { time:"km 30",  icon:"🟠", action:"4º Gel duplo",     detail:"60g CHO · sódio 500mg · bloquear fadiga central" },
+  { time:"km 36",  icon:"☕", action:"5º Gel + cafeína", detail:"30g CHO + 100mg cafeína · últimos 6km" },
+  { time:"Meta",   icon:"🥤", action:"Recuperação",      detail:"Isotônico + proteína 30g + CHO rápido" },
+];
+
+const LIBRARY = {
+  T: {
+    label:"Threshold", color:"#E8A838", zone:"Z3",
+    desc:"Pace: 3:55–4:05/km · FC: 173–179bpm · Pot: 380–400W",
+    items:[
+      { tag:"T-1", name:"Tempo Contínuo 25–30min", diff:3, when:"Semanas 1–4",
+        steps:["15min Z1 aquecimento","25–30min @ 3:55–4:05/km contínuo","10min Z1 + 4 strides"],
+        focus:"Acúmulo máximo no LT2", tip:"Se HR drift >10bpm, reduza 5seg/km" },
+      { tag:"T-2", name:"Split Tempo 2×15min", diff:3, when:"Semanas alternadas",
+        steps:["12min Z1","15min @ 3:55/km","5min trote Z1","15min @ 3:52/km (negativo)","8min Z1"],
+        focus:"Mais volume total no limiar com qualidade por bloco", tip:"Bloco 2 deve ser 3–5seg/km mais rápido" },
+      { tag:"T-3", name:"Tempo Progressivo M→LT2→HM", diff:4, when:"Semanas 5–8",
+        steps:["10min @ 4:00/km","10min @ 3:58/km","10min @ 3:55/km","5min @ 3:45/km","10min Z1"],
+        focus:"Simula transição metabólica da maratona", tip:"Excelente em semanas de carga alta" },
+      { tag:"T-4", name:"Hill Tempo 20min", diff:4, when:"A cada 3–4 semanas",
+        steps:["12min Z1 plano","20min @ percepção LT2 em subida 1–3%","10min trote descida"],
+        focus:"Força específica + LT2; use watt, não pace", tip:"Manter 393W = esforço correto em subida" },
+      { tag:"T-5", name:"Fartlek 6×5min", diff:3, when:"Semana de variação/calor",
+        steps:["10min Z1","6× (5min @ LT2 / 2min trote Z1)","8min Z1"],
+        focus:"30min totais no limiar com qualidade técnica por rep", tip:"Recovery de 2min ainda é fisiologicamente ativo" },
+      { tag:"T-6", name:"Finishing Kick", diff:5, when:"Semanas 10–12, 1×/mês",
+        steps:["12min Z1","20min @ 4:00/km","5min @ 3:55/km","5min @ 3:40/km (burst)","8min Z1"],
+        focus:"Tolerância ao lactato + simulação km 40–42", tip:"Burst não precisa ser sustentável — é tolerância" },
+    ]
+  },
+  CI: {
+    label:"Cruise Int.", color:"#F4A261", zone:"Z3",
+    desc:"Pace: 3:55–4:05/km · Rec: 90s trote · FC rec: ~165bpm",
+    items:[
+      { tag:"CI-1", name:"Clássico 3×2km", diff:3, when:"Toda segunda, Sem 1–4",
+        steps:["15min Z1 + 4 strides","3× 2km @ 3:55–4:00/km","Rec 90s trote","12min Z1"],
+        focus:"6km totais no LT2 com qualidade por rep", tip:"Se 3° rep >5seg mais lento, corte 1 rep" },
+      { tag:"CI-2", name:"Volume Alto 5×1.6km", diff:3, when:"Semanas 5–7",
+        steps:["12min Z1","5× 1600m @ 3:58/km","Rec 75s trote","10min Z1"],
+        focus:"8km totais no limiar — sessão de Canova", tip:"Rec de 75s é intencional; não estenda" },
+      { tag:"CI-3", name:"Ladder 1–2–3km", diff:4, when:"Semana 5–6",
+        steps:["12min Z1","1km @ 3:50/km | Rec 90s","2km @ 3:55/km | Rec 2min","3km @ 4:00/km | Rec 3min","10min Z1"],
+        focus:"6km totais com especificidade crescente", tip:"RPE uniforme (~7.5) em todos os reps" },
+      { tag:"CI-4", name:"Ladder 3–2–1km", diff:4, when:"Carga moderada",
+        steps:["12min Z1","3km @ 4:02/km | Rec 3min","2km @ 3:58/km | Rec 90s","1km @ 3:52/km | Rec 60s","10min Z1"],
+        focus:"Treina execução negativa; rep curta vira kick sob fadiga", tip:"Psicologicamente mais fácil: treino fica menor" },
+      { tag:"CI-5", name:"M-pace Sandwich", diff:4, when:"Semanas 9–12",
+        steps:["10min Z1","2km @ 4:00/km | Rec 60s","2km @ 3:55/km | Rec 90s","2km @ 3:55/km | Rec 90s","2km @ 4:00/km | Rec 60s","10min Z1"],
+        focus:"Especificidade máxima maratona: M-pace + LT2", tip:"Sessão Canova — M-pace ensina a escalar do limiar" },
+      { tag:"CI-6", name:"Mixed-pace Double Threshold", diff:5, when:"Semanas pico 10–13",
+        steps:["12min Z1","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","10min Z1"],
+        focus:"Alternância de zonas treina clearance dinâmico de lactato", tip:"Só usar em semanas de alta forma" },
+    ]
+  },
+  I: {
+    label:"VO₂max", color:"#E63946", zone:"Z4–Z5",
+    desc:"Pace: 3:25–3:35/km · FC >178bpm no final · Rec HRR ≤150bpm",
+    items:[
+      { tag:"I-1", name:"10–12×400m Clássico", diff:4, when:"Qua, Semanas 1–4",
+        steps:["15min Z1 + 4 strides","10–12× 400m @ 3:20–3:25/km","Rec HRR ≤150bpm (~90s)","12min Z1"],
+        focus:"Volume máximo em VO₂max — sessão calibrada no Ibirapuera", tip:"Estímulo acumula nas reps 7–12. Não acelere no começo" },
+      { tag:"I-2", name:"5×1000m", diff:4, when:"Semanas 4–7",
+        steps:["15min Z1","5× 1000m @ 3:28–3:32/km","Rec 2:30–3min trote","12min Z1"],
+        focus:"Reps de ~2:50min — ótimo para biogênese mitocondrial", tip:"Splits de 400m devem ser quase iguais dentro de cada rep" },
+      { tag:"I-3", name:"Ladder VO₂ 1200–400m", diff:5, when:"Semanas 6–8",
+        steps:["15min Z1","1200m @ 3:32/km | Rec 3min","1000m @ 3:30/km | Rec 2:30","800m @ 3:27/km | Rec 2min","600m @ 3:25/km | Rec 90s","2×400m @ 3:22/km | Rec 75s","12min Z1"],
+        focus:"Escalada de intensidade; recruta progressivamente fibras IIa", tip:"~5km totais de qualidade. Psicologicamente poderoso" },
+      { tag:"I-4", name:"6×800m", diff:4, when:"Quando pista disponível",
+        steps:["15min Z1 + 3 strides","6× 800m @ 3:26–3:30/km","Rec 2min trote","12min Z1"],
+        focus:"~2:48 por rep = máximo tempo em vVO₂max por rep", tip:"Se 2° 400m de cada rep for >3seg mais lento, reduza pace" },
+      { tag:"I-5", name:"Daniels Step Fartlek", diff:3, when:"Descarga ou trilha",
+        steps:["10min Z1 + strides","10H/10J → 20H/20J → ... → 90H/90J (passos)","8min Z1"],
+        focus:"~20min de VO₂max sem pressão de pace", tip:"H = passo forte por sensação de I-pace. J = trote leve" },
+      { tag:"I-6", name:"VO₂ Descanso Decrescente", diff:5, when:"Semana pico, 1× no ciclo",
+        steps:["15min Z1 + 4 strides","2× 1000m @ 3:30 | Rec 3min","2× 800m @ 3:27 | Rec 2min","2× 600m @ 3:25 | Rec 90s","2× 400m @ 3:22 | Rec 60s","12min Z1"],
+        focus:"Velocidade crescente + recuperação reduzida = tolerância ao lactato", tip:"Exige 2 dias Z1 depois. Só na forma máxima" },
+    ]
+  },
+  St: {
+    label:"Strides", color:"#06D6A0", zone:"Z5 breve",
+    desc:"80–100m a 85–90% esforço · 20–30seg · Rec: 60–90s caminhada · 4–8 reps",
+    items:[
+      { tag:"St-1", name:"Strides Clássicos Pós-Easy", diff:1, when:"2× semana",
+        steps:["Após easy run","6× 80–100m aceleração gradual → pico 85%","Rec 60–90s caminhada"],
+        focus:"Manter cadência 180–182spm e GCT <230ms", tip:"A aceleração nos primeiros 20m é o drill, não o trecho rápido" },
+      { tag:"St-2", name:"Hill Strides", diff:2, when:"1× semana",
+        steps:["Após easy run","6× 60–80m subida 4–5% @ 85% esforço","Trote suave de volta + 60s repouso"],
+        focus:"Força reativa → reduz GCT via adaptação SSC", tip:"Rigidez tendínea Aquiles → impacto direto no GCT plano" },
+      { tag:"St-3", name:"Pre-workout Primer", diff:1, when:"Antes de toda sessão de qualidade",
+        steps:["Após aquecimento Z1","3–4× 80m: aceleração 70%→80%→85%→90%","60s caminhada entre reps"],
+        focus:"Ativa fibras rápidas antes do treino principal", tip:"Nunca pule antes de sessões I-pace" },
+      { tag:"St-4", name:"Metronome Strides", diff:2, when:"1× semana, progressão ao longo do Build",
+        steps:["Metronome app em 182spm","6× 100m sincronizando passada a 85%","90s caminhada entre reps"],
+        focus:"Elevar cadência de 177 → 182spm sem alargar passada", tip:"Adaptação de cadência leva 6–8 semanas. Comece já" },
+      { tag:"St-5", name:"Post-Threshold Strides", diff:2, when:"Após T-1, T-2, CI-1",
+        steps:["Imediatamente após sessão T ou CI","4× 80–100m @ 85–88%","90s caminhada entre reps"],
+        focus:"Duplo estímulo neuromuscular + LT2 na mesma sessão", tip:"Melhor timing: temperatura corporal já elevada" },
+      { tag:"St-6", name:"Buildup Strides (Suave)", diff:1, when:"Descarga, após longão",
+        steps:["Após easy run","4× 120m: 60%→70%→80%→85% graduais","90s caminhada"],
+        focus:"Versão mais suave; ideal para dias de fadiga", tip:"Tensão na panturrilha ou Aquiles = parar" },
+    ]
+  },
+  R: {
+    label:"R-pace", color:"#9B5DE5", zone:"Z5+",
+    desc:"Pace: 3:00–3:10/km · Rec: FC retorna a 120–125bpm · Max por rep: <90seg",
+    items:[
+      { tag:"R-1", name:"8×200m Clássico", diff:3, when:"Início do Build / descarga",
+        steps:["15min Z1 + strides","8× 200m @ 3:00–3:10/km","Rec 200m trote lento (FC → 120bpm)","10min Z1"],
+        focus:"Economia de corrida pura — qualidade mecânica, não esforço", tip:"Se parecer fácil — ótimo. Não acelere" },
+      { tag:"R-2", name:"4–6×400m", diff:3, when:"Semanas 3–6",
+        steps:["15min Z1 + 4 strides","4–6× 400m @ 3:02–3:08/km","Rec 400m trote + 30s pausa","10min Z1"],
+        focus:"Rep mais longa em R-pace (~80seg) — limite Daniels", tip:"VDOT 58 permite até 400m em R-pace" },
+      { tag:"R-3", name:"Pirâmide 200–400–200m", diff:4, when:"Semanas 4–8",
+        steps:["15min Z1 + strides","200m → 300m → 400m → 300m → 200m @ R-pace","Rec = distância percorrida em trote","10min Z1"],
+        focus:"Variação de distância treina SSC de formas diferentes", tip:"1400m totais em R-pace com qualidade uniforme" },
+      { tag:"R-4", name:"Ciclos 200–200–400m", diff:3, when:"Semanas 5–8",
+        steps:["15min Z1","4× ciclos: 200m R + Rec 200m → 200m R + Rec 200m → 400m R + Rec 400m","10min Z1"],
+        focus:"3.2km totais em R-pace com boa recuperação entre ciclos", tip:"O 400m após dois 200m testa manutenção da economia" },
+      { tag:"R-5", name:"Hill R-pace 8–10×100m", diff:4, when:"1× a cada 2 semanas",
+        steps:["15min Z1 + strides planos","8–10× 100–120m em subida 5–8% @ esforço R-pace","Caminhada de volta completa (60–90s)","10min Z1 plano"],
+        focus:"Força reativa máxima + economia em um estímulo", tip:"Excelente para reduzir GCT de 254ms → <230ms" },
+      { tag:"R-6", name:"Fast Reps (acima de R-pace)", diff:5, when:"Pré-competitivo Sem 13–15",
+        steps:["15min Z1 + strides","6–8× 100–150m @ 2:54–2:57/km","Rec total — FC retorna a 115bpm","10min Z1"],
+        focus:"Velocidade pura e potência anaeróbica alática; stiffness Aquiles", tip:"Max: 2% volume semanal (~8×100m). Não exceder nunca" },
+    ]
+  },
+};
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const C = { bg:"#0A0A0F", surface:"#0D0D1A", border:"#1E1E2E", text:"#E8E8F0", muted:"#6B6B8A", accent:"#4CC9F0" };
+function Card({ children, style={} }) {
+  return <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:16, ...style }}>{children}</div>;
+}
+function Label({ children, color }) {
+  return <div style={{ fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", color:color||C.muted, marginBottom:6 }}>{children}</div>;
+}
+function StatBox({ label, value, sub, color="#4CC9F0" }) {
+  return (
+    <div style={{ textAlign:"center" }}>
+      <div style={{ fontSize:22, fontWeight:800, color, letterSpacing:"-0.03em" }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color:C.muted, marginTop:1 }}>{sub}</div>}
+      <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>{label}</div>
+    </div>
+  );
+}
+const DIFF_DOT = ["","#4CC9F0","#90E0EF","#E8A838","#F4A261","#E63946"];
+
+const TABS = [
+  { id:"overview",  label:"Visão Geral" },
+  { id:"fitness",   label:"📈 Fitness" },
+  { id:"projecao",  label:"🎯 Projeção" },
+  { id:"log",       label:"Log Strava" },
+  { id:"plan",      label:"Plano 15sem" },
+  { id:"paces",     label:"Paces" },
+  { id:"library",   label:"📚 Biblioteca" },
+];
+
+const TooltipStyle = { contentStyle:{ background:"#1A1A2E", border:"1px solid #2E2E4E", borderRadius:8, fontSize:11 }, labelStyle:{ color:C.text } };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+function ChicagoDashboard() {
+  const [tab, setTab]           = useState("overview");
+  const [libCat, setLibCat]     = useState("T");
+  const [libOpen, setLibOpen]   = useState(null);
+  const [libFilter, setLibFilter] = useState(0);
+
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [pmc, setPmc]           = useState([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data: acts, error: actsErr } = await sb
+          .from("strava_activities")
+          .select("*")
+          .order("start_date", { ascending: false })
+          .limit(30);
+        if (actsErr) throw actsErr;
+
+        const { data: pmcData, error: pmcErr } = await sb
+          .from("daily_pmc")
+          .select("*")
+          .order("date", { ascending: true });
+        if (pmcErr) throw pmcErr;
+
+        setActivities(acts || []);
+        setPmc(pmcData || []);
+      } catch (err) {
+        setError(String(err.message || err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const TODAY = new Date();
+  const DAYS_OUT = Math.ceil((RACE_DATE - TODAY) / 86400000);
+
+  const latestPmc = pmc.length > 0 ? pmc[pmc.length - 1] : { ctl: 0, atl: 0, tsb: 0 };
+  const fitnessHist = pmc.slice(-14).map(p => ({
+    date: p.date.slice(5), ctl: p.ctl, atl: p.atl, tsb: p.tsb,
+  }));
+
+  const totalKm30d = useMemo(() => {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+    return activities
+      .filter(a => new Date(a.start_date) >= cutoff)
+      .reduce((s, a) => s + (a.distance_m || 0) / 1000, 0);
+  }, [activities]);
+
+  const logActivities = activities.map(a => ({
+    id: a.id,
+    name: a.name,
+    date: a.start_date.slice(0, 10),
+    km: (a.distance_m || 0) / 1000,
+    pace: paceStr(a.distance_m, a.moving_time_s),
+    effort: a.rtss || 0,
+    hr: a.average_heartrate || null,
+    type: classifyActivity(a),
+  }));
+
+  if (loading) {
+    return (
+      <div style={{ background:C.bg, minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:C.muted, fontFamily:"sans-serif" }}>
+        Carregando dados do Supabase...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ background:C.bg, minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#E63946", fontFamily:"sans-serif", padding:20, textAlign:"center" }}>
+        Erro ao carregar dados: {error}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background:C.bg, minHeight:"100vh", fontFamily:"'Inter','Helvetica Neue',sans-serif", color:C.text, maxWidth:500, margin:"0 auto" }}>
+
+      {/* ── HEADER ── */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"16px 16px 12px" }}>
+        <div style={{ fontSize:10, letterSpacing:"0.15em", color:C.muted, textTransform:"uppercase" }}>Chicago Marathon · Out 11, 2026</div>
+        <div style={{ fontSize:20, fontWeight:800, letterSpacing:"-0.03em", marginTop:4 }}>
+          GPS · <span style={{ color:"#4CC9F0" }}>2:48</span> <span style={{ fontSize:13, fontWeight:400, color:C.muted }}>meta</span>
+        </div>
+        <div style={{ display:"flex", gap:14, marginTop:10, justifyContent:"space-between" }}>
+          <StatBox label="dias" value={DAYS_OUT} color="#E63946" />
+          <StatBox label="semanas" value={Math.max(0, Math.ceil(DAYS_OUT/7))} color="#E8A838" />
+          <StatBox label="VDOT" value={VDOT} color="#4CC9F0" />
+          <StatBox label="LT2" value="3:58" sub="/km" color="#9B5DE5" />
+          <StatBox label="CTL" value={Math.round(latestPmc.ctl)} color="#06D6A0" />
+        </div>
+      </div>
+
+      {/* ── TAB BAR ── */}
+      <div style={{ display:"flex", overflowX:"auto", background:C.surface, borderBottom:`1px solid ${C.border}` }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            background:"transparent", border:"none",
+            borderBottom: tab===t.id ? "2px solid #4CC9F0" : "2px solid transparent",
+            color: tab===t.id ? "#4CC9F0" : C.muted,
+            padding:"9px 12px", fontSize:11, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap",
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* ── TAB: OVERVIEW ── */}
+      {tab === "overview" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:10 }}>
+          <Card>
+            <Label>Progresso para Chicago</Label>
+            <div style={{ background:C.border, borderRadius:4, height:7, marginBottom:5 }}>
+              <div style={{ width:`${Math.min(100, Math.max(0, Math.round((1-DAYS_OUT/106)*100)))}%`, background:"linear-gradient(90deg,#4CC9F0,#9B5DE5)", borderRadius:4, height:7 }} />
+            </div>
+            <div style={{ fontSize:11, color:C.muted }}>Rumo à Chicago · Meia SP City Jul 26 🏅</div>
+          </Card>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            <Card style={{ textAlign:"center" }}>
+              <Label>Últimos 30 dias</Label>
+              <div style={{ fontSize:26, fontWeight:800, color:"#4CC9F0" }}>{totalKm30d.toFixed(0)}</div>
+              <div style={{ fontSize:10, color:C.muted }}>km rodados</div>
+            </Card>
+            <Card style={{ textAlign:"center" }}>
+              <Label>Meia RJ 🏅</Label>
+              <div style={{ fontSize:22, fontWeight:800, color:"#FFD700" }}>1:28:17</div>
+              <div style={{ fontSize:10, color:C.muted }}>Jun 6 · base Riegel 2:52:30</div>
+            </Card>
+          </div>
+          <Card>
+            <Label>Estado atual (PMC)</Label>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, textAlign:"center" }}>
+              {[{l:"CTL",v:Math.round(latestPmc.ctl),c:"#4CC9F0"},{l:"ATL",v:Math.round(latestPmc.atl),c:"#E63946"},{l:"TSB",v:Math.round(latestPmc.tsb),c:"#E8A838"}].map(s=>(
+                <div key={s.l}><div style={{ fontSize:22, fontWeight:800, color:s.c }}>{s.v}</div><div style={{ fontSize:10, color:C.muted }}>{s.l}</div></div>
+              ))}
+            </div>
+          </Card>
+          <Card style={{ background:"#0D170A", border:"1px solid #2A4A1A" }}>
+            <Label color="#6ECB3A">Biomecânica atual</Label>
+            {[
+              {l:"GCT Z2",    v:"~254ms", tgt:"<230ms"},
+              {l:"Cadência",  v:"~177spm",tgt:"180–182"},
+              {l:"VR Z2",     v:"8.16%",  tgt:"<7.5%"},
+              {l:"Decoupling",v:"10.8%",  tgt:"<7%"},
+            ].map((r,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:4, fontSize:11 }}>
+                <span style={{ color:C.muted }}>{r.l}</span>
+                <span style={{ color:"#E8A838", fontWeight:600 }}>{r.v} <span style={{ color:C.muted }}>→ {r.tgt}</span></span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB: FITNESS ── */}
+      {tab === "fitness" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+            {[
+              {l:"CTL", v:Math.round(latestPmc.ctl), d:"Fitness 42d", c:"#4CC9F0"},
+              {l:"ATL", v:Math.round(latestPmc.atl), d:"Fadiga 7d",   c:"#E63946"},
+              {l:"TSB", v:Math.round(latestPmc.tsb), d:"Forma atual", c:"#E8A838"},
+            ].map((m,i)=>(
+              <Card key={i} style={{ textAlign:"center", border:`1px solid ${m.c}33`, padding:"12px 8px" }}>
+                <div style={{ fontSize:10, color:C.muted, marginBottom:6, textTransform:"uppercase", letterSpacing:"0.08em" }}>{m.l}</div>
+                <div style={{ fontSize:28, fontWeight:900, color:m.c }}>{m.v}</div>
+                <div style={{ fontSize:10, color:C.muted, marginTop:4 }}>{m.d}</div>
+              </Card>
+            ))}
+          </div>
+
+          <Card>
+            <Label>CTL / ATL / TSB — Últimos 14 dias</Label>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={fitnessHist} margin={{top:4,right:8,bottom:0,left:-20}}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="date" tick={{fill:C.muted, fontSize:9}} />
+                <YAxis tick={{fill:C.muted, fontSize:9}} />
+                <Tooltip {...TooltipStyle} />
+                <ReferenceLine y={0} stroke={C.border} />
+                <Line type="monotone" dataKey="ctl" stroke="#4CC9F0" strokeWidth={2} dot={false} name="CTL" />
+                <Line type="monotone" dataKey="atl" stroke="#E63946" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="ATL" />
+                <Line type="monotone" dataKey="tsb" stroke="#E8A838" strokeWidth={2} dot={false} name="TSB" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card>
+            <Label>Volume por semana — Plano</Label>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={WEEKS.filter(w=>w.n>0)} margin={{top:4,right:8,bottom:0,left:-24}}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="n" tickFormatter={v=>`S${v}`} tick={{fill:C.muted, fontSize:9}} />
+                <YAxis tick={{fill:C.muted, fontSize:9}} domain={[0,130]} />
+                <Tooltip {...TooltipStyle} formatter={(v)=>[`${v}km`,"Volume"]} labelFormatter={l=>`Semana ${l}`} />
+                <ReferenceLine y={90}  stroke="#4CC9F0" strokeDasharray="3 3" />
+                <ReferenceLine y={120} stroke="#E63946" strokeDasharray="3 3" />
+                <Bar dataKey="vol" radius={[3,3,0,0]}>
+                  {WEEKS.filter(w=>w.n>0).map((w,i)=>(
+                    <Cell key={i} fill={PHASE_COLOR[w.phase]||"#4CC9F0"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:8 }}>
+              {Object.entries(PHASE_COLOR).map(([ph,c])=>(
+                <div key={ph} style={{ display:"flex", alignItems:"center", gap:4, fontSize:10 }}>
+                  <div style={{ width:7, height:7, borderRadius:"50%", background:c }} />
+                  <span style={{ color:C.muted }}>{ph}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <Label>Âncoras fisiológicas</Label>
+            {[
+              {l:"LT2 Pace",      v:"3:58/km",  s:"→ 3:52/km estimado fresco (recal. S6)"},
+              {l:"LT2 Power",     v:"393W",      s:"Referência principal de zona"},
+              {l:"LT2 HR",        v:"178 bpm",   s:"Use power como âncora primária"},
+              {l:"GCT Z2",        v:"254ms",     s:"Target <245ms em Chicago"},
+              {l:"Vertical Ratio",v:"8.16%",     s:"Target <7.5% em Chicago"},
+              {l:"Cadência Z2",   v:"177 spm",   s:"Target 180–182 spm"},
+              {l:"Decoupling",    v:"10.8%",     s:"Target <7% em longão 32km"},
+            ].map((a,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
+                <div>
+                  <div style={{ fontSize:12, color:"#B0B0CC" }}>{a.l}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>{a.s}</div>
+                </div>
+                <div style={{ fontSize:14, fontWeight:700, color:"#4CC9F0" }}>{a.v}</div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB: PROJEÇÃO ── */}
+      {tab === "projecao" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:2 }}>Cenários de Performance</div>
+          {SCENARIOS.map(s=>(
+            <div key={s.key} style={{
+              background: s.key==="meta" ? "#1A1400" : C.surface,
+              border: `1px solid ${s.key==="meta" ? "#FFD700" : s.color+"44"}`,
+              borderLeft: `4px solid ${s.color}`,
+              borderRadius:10, padding:"12px 14px",
+              boxShadow: s.key==="meta" ? "0 0 16px #FFD70022" : "none",
+            }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:s.color, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:4 }}>{s.label}</div>
+                  <div style={{ fontSize:10, color:C.muted, lineHeight:1.5 }}>{s.desc}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0, marginLeft:12 }}>
+                  <div style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{s.time}</div>
+                  <div style={{ fontSize:11, color:s.color }}>{s.pace}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <Card>
+            <Label>Estratégia de Pace — 42.2km @ 4:00/km</Label>
+            <div style={{ fontSize:10, color:C.muted, marginBottom:10 }}>
+              Negative split · 1ª metade 1:24:30 (4:01/km) · 2ª metade 1:23:30 (3:58/km)
+            </div>
+            {PACE_STRATEGY.map((s,i)=>(
+              <div key={i} style={{
+                display:"flex", alignItems:"center", gap:10, marginBottom:6,
+                background: i>=6 ? "#160A0A" : C.bg, borderRadius:6, padding:"6px 10px",
+                border: `1px solid ${i>=6 ? "#E6394622" : C.border}`
+              }}>
+                <div style={{ fontSize:10, color:C.muted, width:36, flexShrink:0 }}>km {s.km}</div>
+                <div style={{ fontSize:15, fontWeight:800, color:"#4CC9F0", width:36, flexShrink:0 }}>{s.pace}</div>
+                <div style={{ fontSize:10, color:"#E8A838", width:70, flexShrink:0 }}>{s.pw}</div>
+                <div style={{ fontSize:10, color: i>=6 ? "#E63946" : C.muted }}>{s.note}</div>
+              </div>
+            ))}
+          </Card>
+
+          <Card>
+            <Label>Protocolo de Nutrição — Race Day</Label>
+            <div style={{ fontSize:10, color:C.muted, marginBottom:10 }}>
+              CHO total: ~150–180g · mistura glicose:frutose 2:1 · sódio 500mg/h
+            </div>
+            {NUTRITION.map((n,i)=>(
+              <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:8, borderBottom:`1px solid ${C.border}`, paddingBottom:8 }}>
+                <div style={{
+                  background:"#1A1A2E", borderRadius:6, padding:"3px 8px",
+                  fontSize:10, fontWeight:700, color:"#4CC9F0",
+                  minWidth:44, textAlign:"center", flexShrink:0
+                }}>{n.time}</div>
+                <div style={{ fontSize:16, flexShrink:0 }}>{n.icon}</div>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600, color:C.text, marginBottom:1 }}>{n.action}</div>
+                  <div style={{ fontSize:11, color:C.muted, lineHeight:1.4 }}>{n.detail}</div>
+                </div>
+              </div>
+            ))}
+            <div style={{ background:"#0A1020", borderRadius:8, padding:"10px 12px", fontSize:11, color:"#94A0B8", lineHeight:1.6, marginTop:4 }}>
+              💧 <b style={{color:C.text}}>Hidratação:</b> 400–500ml/h em Chicago (~10°C esperado). Euidratação na manhã — urina clara. Não beber em excesso: risco de hiponatremia.
+            </div>
+          </Card>
+
+          <Card style={{ background:"#0D0A17", border:"1px solid #9B5DE544" }}>
+            <Label color="#9B5DE5">Estratégia Mental — 4 Fases</Label>
+            {[
+              {km:"0–10",  label:"Paciência",    desc:"Ignore o pelotão. Power é o chefe. Se parecer fácil — ótimo."},
+              {km:"10–21", label:"Ritmo",         desc:"Negative split começa aqui. 4:00/km sentido confortável."},
+              {km:"21–32", label:"Comprometer",   desc:"Esta é a corrida. Gel+cafeína km 24. Pense só no próximo km."},
+              {km:"32–42", label:"Sobreviver 🔥", desc:"Dor é normal. Diminua passada se necessário, não pare. Sprint final."},
+            ].map((f,i)=>(
+              <div key={i} style={{ borderLeft:`3px solid #9B5DE5`, paddingLeft:10, marginBottom:10 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#9B5DE5" }}>km {f.km} · {f.label}</div>
+                <div style={{ fontSize:11, color:C.muted, lineHeight:1.4 }}>{f.desc}</div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB: LOG ── */}
+      {tab === "log" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:8 }}>
+          <Card style={{ padding:"10px 12px" }}>
+            <Label>Últimas atividades (Strava sync)</Label>
+            <div style={{ display:"flex", gap:14, justifyContent:"space-between" }}>
+              <StatBox label="km 30d" value={totalKm30d.toFixed(0)} color="#4CC9F0" />
+              <StatBox label="runs" value={logActivities.length} color="#E8A838" />
+              <StatBox label="Meia RJ" value="1:28:17" color="#FFD700" />
+            </div>
+          </Card>
+          {logActivities.map(a=>(
+            <div key={a.id} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600 }}>{a.name}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>{a.date}</div>
+                </div>
+                <div style={{ background:TYPE_COLOR[a.type]+"22", color:TYPE_COLOR[a.type], borderRadius:4, padding:"2px 7px", fontSize:10, fontWeight:700, border:`1px solid ${TYPE_COLOR[a.type]}44` }}>
+                  {TYPE_LABEL[a.type]||a.type}
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:14, marginTop:8 }}>
+                {[{l:"dist",v:`${a.km.toFixed(1)}km`},{l:"pace",v:a.pace+"/km"},{l:"rTSS",v:a.effort},{l:"HR méd",v:a.hr?`${Math.round(a.hr)}bpm`:"–"}].map(s=>(
+                  <div key={s.l} style={{ textAlign:"center" }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:C.text }}>{s.v}</div>
+                    <div style={{ fontSize:10, color:C.muted }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB: PLAN ── */}
+      {tab === "plan" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:8 }}>
+          <Card style={{ padding:"10px 12px" }}>
+            <Label>Build → Down → Block → Taper → Race</Label>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {Object.entries(PHASE_COLOR).map(([ph,c])=>(
+                <div key={ph} style={{ display:"flex", alignItems:"center", gap:4, fontSize:10 }}>
+                  <div style={{ width:7, height:7, borderRadius:"50%", background:c }} /><span style={{ color:C.muted }}>{ph}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+          {WEEKS.map(w=>(
+            <div key={w.n} style={{
+              background: w.status==="current" ? "#0A1520" : C.surface,
+              border: `1px solid ${w.status==="current" ? "#4CC9F044" : C.border}`,
+              borderLeft: `3px solid ${PHASE_COLOR[w.phase]||C.border}`,
+              borderRadius:8, padding:"10px 12px",
+            }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600 }}>
+                    {w.label} {w.status==="current" && <span style={{ color:"#4CC9F0", fontSize:10 }}>← ATUAL</span>}
+                  </div>
+                  <div style={{ fontSize:10, color:C.muted }}>{w.dates}</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:PHASE_COLOR[w.phase] }}>{w.vol}km</div>
+                  <div style={{ fontSize:10, color:C.muted }}>{w.phase}</div>
+                </div>
+              </div>
+              <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:3 }}>
+                {w.quality.map((q,i)=>(
+                  <div key={i} style={{ fontSize:11, color:C.muted, paddingLeft:8, borderLeft:`1px solid ${C.border}` }}>
+                    {i===0?"⚡":"🔥"} {q}
+                  </div>
+                ))}
+                {w.long>0 && <div style={{ fontSize:11, color:"#7B2FBE", paddingLeft:8, borderLeft:"1px solid #7B2FBE44" }}>🏃 Longão {w.long}km Z2</div>}
+                {w.race && (
+                  <div style={{ marginTop:6, background:"#1A1400", border:"1px solid #FFD70055", borderRadius:6, padding:"6px 10px", display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:16 }}>🏅</span>
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:700, color:"#FFD700" }}>Meia SP City · Jul 26</div>
+                      <div style={{ fontSize:10, color:"#B8A000" }}>Alvo: 1:20h · 3:47/km · validação intermediária</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB: PACES ── */}
+      {tab === "paces" && (
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:10 }}>
+          <Card>
+            <Label>Âncora fisiológica · LT2 calibrado Jun 2026</Label>
+            <div style={{ fontSize:30, fontWeight:800, color:"#9B5DE5", textAlign:"center", margin:"8px 0" }}>3:58/km</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, textAlign:"center" }}>
+              <div><div style={{ color:"#E8A838", fontWeight:700 }}>178bpm</div><div style={{ fontSize:10, color:C.muted }}>FC LT2</div></div>
+              <div><div style={{ color:"#4CC9F0", fontWeight:700 }}>393W</div><div style={{ fontSize:10, color:C.muted }}>Potência LT2</div></div>
+              <div><div style={{ color:"#9B5DE5", fontWeight:700 }}>VDOT 58</div><div style={{ fontSize:10, color:C.muted }}>índice atual</div></div>
+            </div>
+          </Card>
+          {PACES.map(p=>(
+            <div key={p.zone} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>{p.zone}</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, fontSize:11 }}>
+                <div><div style={{ color:"#4CC9F0", fontWeight:700 }}>{p.pace}</div><div style={{ color:C.muted }}>pace</div></div>
+                <div><div style={{ color:"#E63946", fontWeight:700 }}>{p.bpm}</div><div style={{ color:C.muted }}>FC</div></div>
+                <div><div style={{ color:"#E8A838", fontWeight:700 }}>{p.watts}</div><div style={{ color:C.muted }}>potência</div></div>
+              </div>
+              <div style={{ fontSize:10, color:C.muted, marginTop:6, borderTop:`1px solid ${C.border}`, paddingTop:5 }}>{p.use}</div>
+            </div>
+          ))}
+          <Card style={{ background:"#100A17", border:"1px solid #2A1A3A" }}>
+            <Label color="#9B5DE5">Recalibração LT2</Label>
+            <div style={{ fontSize:12, color:"#B0A0C0" }}>Estimativa atual aponta para ~3:50/km em esforço fresco de 30min. Field test agendado para semana 6 do Build (Ago 5).</div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── TAB: LIBRARY ── */}
+      {tab === "library" && (
+        <div style={{ display:"flex", flexDirection:"column" }}>
+          <div style={{ display:"flex", overflowX:"auto", background:C.surface, borderBottom:`1px solid ${C.border}` }}>
+            {Object.entries(LIBRARY).map(([k,cat])=>(
+              <button key={k} onClick={()=>{ setLibCat(k); setLibOpen(null); setLibFilter(0); }} style={{
+                background: libCat===k ? cat.color+"11" : "transparent", border:"none",
+                borderBottom: libCat===k ? `2px solid ${cat.color}` : "2px solid transparent",
+                color: libCat===k ? cat.color : C.muted,
+                padding:"9px 12px", fontSize:11, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
+              }}>
+                <span style={{ background:libCat===k ? cat.color+"33" : "#1E1E2E", color:libCat===k ? cat.color : C.muted, borderRadius:4, padding:"1px 5px", fontSize:9, marginRight:5 }}>{k}</span>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          {(()=>{
+            const cat = LIBRARY[libCat];
+            return (
+              <>
+                <div style={{ background:cat.color+"08", borderBottom:`1px solid ${cat.color}22`, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, color:cat.color, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:3 }}>{cat.zone}</div>
+                  <div style={{ fontSize:12, color:"#B8B8CC" }}>{cat.desc}</div>
+                </div>
+                <div style={{ padding:"8px 12px", display:"flex", gap:6, alignItems:"center", borderBottom:`1px solid ${C.border}`, background:C.surface }}>
+                  <span style={{ fontSize:10, color:C.muted }}>DIFICULDADE:</span>
+                  {[0,1,2,3,4,5].map(d=>(
+                    <button key={d} onClick={()=>setLibFilter(d)} style={{
+                      background:libFilter===d?(d===0?"#1E1E2E":DIFF_DOT[d]+"33"):"transparent",
+                      border:`1px solid ${libFilter===d?(d===0?"#3E3E5E":DIFF_DOT[d]):"#1E1E2E"}`,
+                      color:d===0?"#B8B8CC":DIFF_DOT[d], borderRadius:20,
+                      padding:"2px 7px", fontSize:10, fontWeight:600, cursor:"pointer",
+                    }}>{d===0?"Todos":["","Leve","Mod","Intenso","Muito","Máx"][d]}</button>
+                  ))}
+                </div>
+                <div style={{ padding:"8px 12px 40px" }}>
+                  {cat.items.filter(w=>libFilter===0||w.diff===libFilter).map(w=>{
+                    const isOpen = libOpen===w.tag;
+                    return (
+                      <div key={w.tag} style={{
+                        background:isOpen ? cat.color+"08" : C.surface,
+                        border:`1px solid ${isOpen ? cat.color+"44" : C.border}`,
+                        borderRadius:8, marginBottom:8, overflow:"hidden",
+                      }}>
+                        <button onClick={()=>setLibOpen(isOpen?null:w.tag)} style={{
+                          width:"100%", background:"transparent", border:"none", padding:"11px 12px",
+                          display:"flex", alignItems:"center", gap:10, cursor:"pointer", textAlign:"left",
+                        }}>
+                          <span style={{ background:cat.color+"22", color:cat.color, borderRadius:4, padding:"2px 6px", fontSize:10, fontWeight:700, fontFamily:"monospace", border:`1px solid ${cat.color}33`, flexShrink:0 }}>{w.tag}</span>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontSize:12, fontWeight:600, color:C.text }}>{w.name}</div>
+                            <div style={{ fontSize:10, color:C.muted, marginTop:1 }}>{w.when}</div>
+                          </div>
+                          <div style={{ display:"flex", gap:2, flexShrink:0 }}>
+                            {[1,2,3,4,5].map(i=><div key={i} style={{ width:5,height:5,borderRadius:"50%",background:i<=w.diff?DIFF_DOT[w.diff]:"#1E1E2E" }}/>)}
+                          </div>
+                          <span style={{ color:cat.color, fontSize:13, transform:isOpen?"rotate(180deg)":"none", transition:"transform 0.2s", marginLeft:4 }}>▾</span>
+                        </button>
+                        {isOpen && (
+                          <div style={{ padding:"0 12px 12px" }}>
+                            <div style={{ height:1, background:cat.color+"22", marginBottom:10 }} />
+                            <div style={{ marginBottom:10 }}>
+                              <div style={{ fontSize:10, color:C.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:7 }}>Estrutura</div>
+                              {w.steps.map((s,i)=>(
+                                <div key={i} style={{ display:"flex", gap:8, marginBottom:4 }}>
+                                  <div style={{ width:17,height:17,borderRadius:"50%",background:cat.color+"22",border:`1px solid ${cat.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:cat.color,fontWeight:700,flexShrink:0,marginTop:1 }}>{i+1}</div>
+                                  <div style={{ fontSize:12, color:"#B8B8CC", lineHeight:1.5 }}>{s}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ background:cat.color+"0D", borderLeft:`3px solid ${cat.color}`, borderRadius:"0 6px 6px 0", padding:"7px 10px", marginBottom:7 }}>
+                              <div style={{ fontSize:9, color:cat.color+"99", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:2 }}>Foco</div>
+                              <div style={{ fontSize:12, color:"#D0D0E8" }}>{w.focus}</div>
+                            </div>
+                            <div style={{ background:"#1A1A2E", borderRadius:6, padding:"7px 10px" }}>
+                              <div style={{ fontSize:9, color:C.muted, marginBottom:2 }}>💡 Execução</div>
+                              <div style={{ fontSize:11, color:"#9090A8", lineHeight:1.5 }}>{w.tip}</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── FOOTER ── */}
+      <div style={{ borderTop:`1px solid ${C.border}`, padding:"10px 16px", background:C.surface, fontSize:10, color:"#3A3A5A", textAlign:"center" }}>
+        GPS · Chicago 2026 · LT2 3:58/km · I-pace 3:25–3:35 · R-pace 3:00–3:10 · Dados ao vivo via Supabase
+      </div>
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<ChicagoDashboard />);
+</script>
+</body>
+</html>
