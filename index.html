@@ -6,6 +6,7 @@
 <title>GPS → Chicago 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/react-is@18/umd/react-is.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -127,7 +128,15 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">Carregando...</div>
+<script>
+  window.addEventListener('error', function(e) {
+    var root = document.getElementById('root');
+    if (root && root.innerHTML.includes('Carregando')) {
+      root.innerHTML = '<div style="padding:24px;font-family:monospace;color:#c00;white-space:pre-wrap;">Erro ao carregar o dashboard:\n\n' + (e.message || e) + '\n\nArquivo: ' + (e.filename || '?') + ' linha ' + (e.lineno || '?') + '</div>';
+    }
+  });
+</script>
 
 <script type="text/babel">
 const { useState, useMemo, useEffect } = React;
