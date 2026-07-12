@@ -448,7 +448,7 @@ function PageOverview({ activities, latestPmc, daysOut }) {
 }
 
 function PageFitness({ pmc, latestPmc }) {
-  const hist = pmc.slice(-30).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+  const hist = pmc.slice(-90).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
 
   return (
     <div className="page gap-14">
@@ -472,7 +472,7 @@ function PageFitness({ pmc, latestPmc }) {
       </div>
 
       <div className="card">
-        <div className="card-label">Histórico Real — Últimos 30 dias</div>
+        <div className="card-label">Histórico Real — Últimos 90 dias</div>
         <MiniLineChart
           data={hist}
           lines={[
