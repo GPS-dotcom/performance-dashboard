@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Dashboard de Treino</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-alt: #ffffff;
+    --border: rgba(11,11,11,0.10);
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --text: #0b0b0b;
+    --muted: #898781;
+    --text-secondary: #52514e;
+    --bone: #ffffff;
+    --accent: #2a78d6;
+    --accent-soft: #c9d9f0;
+    --z1: #2a78d6;
+    --z2: #1baf7a;
+    --z3: #eda100;
+    --z4: #eb6834;
+    --z5: #e34948;
+    --good: #0ca30c;
+    --warning: #c98500;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-alt: #212120;
+      --border: rgba(255,255,255,0.10);
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --text: #ffffff;
+      --muted: #898781;
+      --text-secondary: #c3c2b7;
+      --bone: #212120;
+      --accent: #3987e5;
+      --accent-soft: #2a3b52;
+      --z1: #3987e5;
+      --z2: #199e70;
+      --z3: #c98500;
+      --z4: #d95926;
+      --z5: #e66767;
+      --good: #0ca30c;
+      --warning: #fab219;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-variant-numeric: proportional-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  .banner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 26px; }
+  .title-block .eyebrow {
+
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .sync-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .sync-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--accent); color: #ffffff; border: none;
+    padding: 9px 15px; border-radius: 8px;
+     font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  .sync-btn:hover { filter: brightness(1.08); }
+  .last-sync {  font-size: 10.5px; color: var(--muted); }
+
+  .sync-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(5,6,8,0.72);
+    align-items: center; justify-content: center; z-index: 110; padding: 20px;
+  }
+  .sync-modal-overlay.active { display: flex; }
+  .sync-modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    max-width: 440px; width: 100%; padding: 24px;
+  }
+  .sync-modal h3 { margin: 0 0 10px;  font-size: 18px; text-transform: uppercase; font-weight: 400; }
+  .sync-modal p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0 0 14px; }
+  .prompt-box {
+    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px;  font-size: 12.5px;
+    margin-bottom: 14px; user-select: all; cursor: text; color: var(--text);
+  }
+  .sync-modal-actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+  .copied-msg { color: var(--z2); font-size: 11.5px; margin-right: auto; opacity: 0; transition: opacity 0.15s;  }
+  .copied-msg.show { opacity: 1; }
+
+  .period-toggle { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+  .period-toggle button {
+
+    font-size: 12.5px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .period-toggle button.active { background: var(--accent); color: #ffffff; font-weight: 600; }
+
+  /* ---- Training Log ---- */
+  .tl-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
+  .tl-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .tl-legend span {  font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+  .tl-cal-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) 150px;
+    gap: 8px;
+
+    font-size: 10.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 2px 8px;
+  }
+
+  .tl-week-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) 150px;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .tl-day {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px;
+    min-height: 92px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.12s;
+  }
+  .tl-day:hover { border-color: #b9b8ae; }
+  .tl-day.empty { align-items: center; justify-content: center; color: #c3c2b7; font-size: 20px; }
+  .tl-day-date {  font-size: 10px; color: var(--muted); }
+  .tl-day-tag {
+    align-self: flex-start;
+
+    font-size: 9.5px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #ffffff;
+  }
+  .tl-day-stats {  font-size: 10.5px; color: #52514e; line-height: 1.5; }
+
+  .tl-week-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+  }
+  .tl-week-summary .k {  font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .tl-week-summary .v { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* modal */
+  .tl-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(5,6,8,0.72);
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .tl-modal-overlay.active { display: flex; }
+  .tl-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .tl-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .tl-modal-date {  font-size: 17px; margin-bottom: 8px; }
+  .tl-close { background: transparent; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+  .tl-select {
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--text);
+     font-size: 12px; padding: 6px 10px; border-radius: 6px;
+  }
+  .tl-stimulus-select { display: block; }
+
+  .tl-section { border-top: 1px solid var(--border); padding: 14px 0; }
+  .tl-section-title {
+
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .tl-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tl-row label {
+    display: flex; flex-direction: column; gap: 4px;
+     font-size: 10px; color: var(--muted);
+    flex: 1; min-width: 100px;
+  }
+  .tl-row input, .tl-row select {
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--text);
+     font-size: 13px; padding: 7px 8px; border-radius: 6px;
+  }
+
+  .tl-summary {
+    margin-top: 14px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+
+    font-size: 12.5px;
+    color: var(--text);
+  }
+
+  .tl-modal-actions { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
+  .tl-btn {
+     font-size: 12.5px;
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 16px; border-radius: 7px; cursor: pointer;
+  }
+  .tl-btn-primary { background: var(--accent); color: #ffffff; border-color: var(--accent); font-weight: 600; }
+  .tl-btn-danger { background: transparent; color: var(--z5); border-color: rgba(227,73,72,0.35); }
+
+  @media (max-width: 720px) {
+    .tl-cal-header { display: none; }
+    .tl-week-row { grid-template-columns: repeat(7, 1fr); }
+    .tl-week-summary { grid-column: 1 / -1; flex-direction: row; justify-content: space-around; }
+  }
+
+  .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 22px; }
+  .tab-btn {
+
+    font-size: 12.5px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    padding: 10px 4px;
+    margin-right: 22px;
+    cursor: pointer;
+    position: relative;
+    top: 1px;
+    border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .kpi .label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;  }
+  .kpi .value { font-size: 26px; font-weight: 700; margin-top: 8px; letter-spacing: -0.01em; }
+  .kpi .value .unit { font-size: 14px; color: var(--muted);  font-weight: 400; margin-left: 4px; }
+  .kpi .delta { font-size: 12px; margin-top: 4px;  }
+  .delta.up { color: var(--z2); }
+  .delta.down { color: var(--z5); }
+
+  .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 0 0 14px;
+    color: var(--text-secondary);
+  }
+  .panel .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; margin-top: -10px; }
+
+  .last-workout { margin-bottom: 16px; }
+  .lw-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .zone-badge {
+
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    padding: 4px 9px;
+    border-radius: 6px;
+  }
+  .lw-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .lw-stats > div { display: flex; flex-direction: column; }
+  .lw-val { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .lw-val .lw-unit { font-size: 12px; color: var(--muted);  font-weight: 400; margin-left: 2px; }
+  .lw-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;  margin-top: 3px; }
+
+  .analysis { margin-top: 18px; }
+  .analysis-label {
+
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .analysis p { font-size: 13.5px; line-height: 1.6; color: #52514e; margin: 0 0 10px; }
+  .analysis p:last-child { margin-bottom: 0; }
+  .analysis strong { color: var(--text); font-weight: 600; }
+  .analysis-note {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px !important;
+    color: var(--muted) !important;
+  }
+
+  @media (max-width: 820px) {
+    .lw-stats { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .zone-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .zone-legend span {  font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  .search-row { margin-bottom: 12px; }
+  .search-row input[type=text] {
+    width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-alt); color: var(--text); font-size: 13px;
+
+  }
+  .table-scroll { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 400;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  thead th.sorted::after { content: " " attr(data-dir); color: var(--accent); }
+  tbody td { padding: 10px 10px; border-bottom: 1px solid #e1e0d9;  font-size: 12.5px; }
+  tbody tr:hover { background: var(--surface-alt); }
+  .name-cell {  font-size: 13px; }
+  .zone-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+
+  .footer-note {
+
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .predict-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .predict-cell { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .predict-cell-label {
+
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 760px) { .ref-grid { grid-template-columns: 1fr; } }
+  .hint { font-size: 10.5px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px;  }
+  td.editable { cursor: text; border-radius: 4px; }
+  td.editable:hover { background: var(--surface-alt); }
+  td.editable:focus { outline: 1px solid var(--accent); background: var(--surface-alt); }
+  #refThresholdPace { color: var(--accent); font-weight: 600; }
+
+  .footnote {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .predict-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 820px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .predict-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">⚠ PREVIEW — dados fictícios só pra validar layout. Nada aqui vem do seu Garmin ainda.</div>
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Registro de treino</div>
+      <h1>Dashboard — Corrida</h1>
+    </div>
+    <div class="header-right">
+      <div class="period-toggle">
+        <button class="active">7D</button>
+        <button>30D</button>
+        <button>90D</button>
+        <button>180D</button>
+      </div>
+      <div class="sync-wrap">
+        <button class="sync-btn" id="syncBtn">⟳ Sync com Garmin</button>
+        <div class="last-sync">Última sync: 12/07 07:15 · via Claude</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="resumo">Resumo</button>
+    <button class="tab-btn" data-tab="frequencia">Distribuição de FC</button>
+    <button class="tab-btn" data-tab="predictions">Predictions</button>
+    <button class="tab-btn" data-tab="trainingLog">Training Log</button>
+  </div>
+
+  <div id="tab-resumo" class="tab-panel active">
+  <div class="panel last-workout">
+    <div class="lw-head">
+      <div>
+        <div class="eyebrow" style="margin-bottom:4px;">Session log</div>
+        <span class="zone-badge" style="background:var(--z4)">Z4 · LIMIAR</span>
+        <h2 style="display:inline; margin-left:10px; font-size:17px;">Duplo limiar — manhã</h2>
+        <div class="sub" style="margin-top:6px;">Sexta, 11/07 · 06:40 · Parque Ibirapuera</div>
+      </div>
+    </div>
+
+    <div class="lw-stats">
+      <div><span class="lw-val">14.2<span class="lw-unit">km</span></span><span class="lw-label">Distância</span></div>
+      <div><span class="lw-val">1:01:22</span><span class="lw-label">Duração</span></div>
+      <div><span class="lw-val">4:18<span class="lw-unit">/km</span></span><span class="lw-label">Pace médio</span></div>
+      <div><span class="lw-val">162<span class="lw-unit">bpm</span></span><span class="lw-label">FC média</span></div>
+      <div><span class="lw-val">352<span class="lw-unit">W</span></span><span class="lw-label">Potência média</span></div>
+      <div><span class="lw-val">4.1</span><span class="lw-label">TE aeróbico</span></div>
+    </div>
+
+    <canvas id="splitsChart" height="70" style="margin-top:16px;"></canvas>
+
+    <div class="analysis">
+      <div class="analysis-label">Análise</div>
+      <p>Os dois blocos de limiar saíram a <strong>4:15–4:20/km</strong> com FC estabilizando em <strong>160–165 bpm</strong> — bem dentro da sua faixa-alvo (4:15–4:25/km, 158–168 bpm) e sem vazar pra Z5, sinal de que o pace estava calibrado e não forçado. O bloco 2 manteve o mesmo pace do bloco 1 com FC praticamente igual (163 vs. 161 bpm), o que indica boa resistência ao limiar sem fadiga acumulada entre os blocos.</p>
+      <p>Comparado às suas últimas 3 sessões de duplo limiar, esse treino teve o <strong>menor custo fisiológico pra um pace equivalente</strong>: FC média 3 bpm mais baixa que a sessão de 27/06 no mesmo pace-alvo. Isso é consistente com a queda de tempo em Z3 que você vem sustentando nas últimas semanas — o treino ficou tecnicamente limpo, sem "zona cinza" entre os blocos de trabalho.</p>
+      <p class="analysis-note">📌 Ponto de atenção: o intervalo de recuperação entre os blocos ficou em Z2 alto (não Z1), o que é aceitável ocasionalmente mas vale monitorar se isso virar padrão — recuperação mais baixa entre blocos preserva melhor a qualidade do segundo bloco em semanas de maior volume.</p>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="label">Volume no período</div>
+      <div class="value">87<span class="unit">km</span></div>
+      <div class="delta up">▲ 6% vs. semana anterior</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Atividades</div>
+      <div class="value">6</div>
+      <div class="delta up">2 sessões de duplo limiar</div>
+    </div>
+    <div class="kpi">
+      <div class="label">VO2max estimado</div>
+      <div class="value">58<span class="unit">ml/kg/min</span></div>
+      <div class="delta up">▲ +1 nos últimos 30d</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Zona cinza (Z3)</div>
+      <div class="value">9<span class="unit">%</span></div>
+      <div class="delta up">▼ vs. 14% no mês anterior</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Atividades recentes</h2>
+    <div class="sub">Últimas sessões registradas · clique no cabeçalho pra ordenar</div>
+    <div class="search-row">
+      <input type="text" id="activitySearch" placeholder="Buscar por nome ou tipo de treino…">
+    </div>
+    <div class="table-scroll">
+    <table id="activityTable">
+      <thead>
+        <tr>
+          <th></th>
+          <th data-key="date">Data</th>
+          <th data-key="name">Treino</th>
+          <th data-key="distKm">Dist.</th>
+          <th data-key="paceSec">Pace</th>
+          <th data-key="hr">FC méd.</th>
+          <th data-key="power">Potência</th>
+          <th data-key="te">TE aeróbico</th>
+        </tr>
+      </thead>
+      <tbody id="activityTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  </div><!-- /tab-resumo -->
+
+  <div id="tab-frequencia" class="tab-panel">
+    <div class="grid">
+      <div class="panel">
+        <h2>Distribuição de zona por semana</h2>
+        <div class="sub">Tempo em cada zona de FC — últimas 8 semanas</div>
+        <canvas id="zoneWeekChart" height="220"></canvas>
+        <div class="zone-legend">
+          <span><i class="dot" style="background:var(--z1)"></i>Z1 recuperação</span>
+          <span><i class="dot" style="background:var(--z2)"></i>Z2 aeróbico</span>
+          <span><i class="dot" style="background:var(--z3)"></i>Z3 cinza</span>
+          <span><i class="dot" style="background:var(--z4)"></i>Z4 limiar</span>
+          <span><i class="dot" style="background:var(--z5)"></i>Z5 vo2max</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Zonas — total do período</h2>
+        <div class="sub">Minutos acumulados por zona</div>
+        <canvas id="zoneDonut" height="220"></canvas>
+      </div>
+    </div>
+  </div><!-- /tab-frequencia -->
+
+  <div id="tab-predictions" class="tab-panel">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">5K estimado</div>
+        <div class="value">19:42</div>
+        <div class="delta up">▼ 28s nos últimos 90d</div>
+      </div>
+      <div class="kpi">
+        <div class="label">10K estimado</div>
+        <div class="value">41:05</div>
+        <div class="delta up">▼ 52s nos últimos 90d</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Meia estimada</div>
+        <div class="value">1:31:20</div>
+        <div class="delta up">▼ 2:10 nos últimos 90d</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Maratona estimada</div>
+        <div class="value">3:04:10</div>
+        <div class="delta up">▼ 4:40 nos últimos 90d</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Progressão das previsões de prova</h2>
+      <div class="sub">Garmin Race Predictor — últimos 90 dias</div>
+      <div class="predict-grid">
+        <div class="predict-cell">
+          <div class="predict-cell-label">5K</div>
+          <canvas id="predict5k" height="140"></canvas>
+        </div>
+        <div class="predict-cell">
+          <div class="predict-cell-label">10K</div>
+          <canvas id="predict10k" height="140"></canvas>
+        </div>
+        <div class="predict-cell">
+          <div class="predict-cell-label">Meia maratona</div>
+          <canvas id="predictHM" height="140"></canvas>
+        </div>
+        <div class="predict-cell">
+          <div class="predict-cell-label">Maratona</div>
+          <canvas id="predictM" height="140"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Tendência de VO2max</h2>
+        <div class="sub">Estimativa por atividade, últimos 90 dias</div>
+        <canvas id="vo2Chart" height="220"></canvas>
+      </div>
+
+      <div class="panel">
+        <h2>Lactate Threshold</h2>
+        <div class="sub">Pace e FC no limiar — últimos 90 dias</div>
+        <canvas id="ltChart" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ref-grid">
+        <div>
+          <h2>Referência: zonas de FC</h2>
+          <table>
+            <thead><tr><th>Zona</th><th>FC (bpm)</th><th>Uso</th></tr></thead>
+            <tbody>
+              <tr><td><b>Z1</b></td><td class="editable" contenteditable="true">&lt;128</td><td>Recuperação</td></tr>
+              <tr><td><b>Z2</b></td><td class="editable" contenteditable="true">128–148</td><td>Aeróbico / longão</td></tr>
+              <tr><td><b>Z3</b></td><td class="editable" contenteditable="true">148–158</td><td>Zona cinza</td></tr>
+              <tr><td><b>Z4</b></td><td class="editable" contenteditable="true">158–168</td><td>Limiar</td></tr>
+              <tr><td><b>Z5</b></td><td class="editable" contenteditable="true">168+</td><td>VO2max</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h2>Referência: paces-alvo <span class="hint">editável</span></h2>
+          <table>
+            <thead><tr><th>Sessão</th><th>Pace</th><th>FC</th></tr></thead>
+            <tbody>
+              <tr><td>Fácil</td><td class="editable" contenteditable="true">5:30–6:00/km</td><td class="editable" contenteditable="true">118–128</td></tr>
+              <tr><td>Longão</td><td class="editable" contenteditable="true">5:00–5:20/km</td><td class="editable" contenteditable="true">128–148</td></tr>
+              <tr><td>Tempo</td><td class="editable" contenteditable="true">4:30–4:40/km</td><td class="editable" contenteditable="true">148–158</td></tr>
+              <tr><td>Limiar <span class="hint">usado no rTSS</span></td><td class="editable" contenteditable="true" id="refThresholdPace">4:20/km</td><td class="editable" contenteditable="true">158–168</td></tr>
+              <tr><td>VO2 / tiros</td><td class="editable" contenteditable="true">3:45–3:55/km</td><td class="editable" contenteditable="true">168+</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footnote">Baseado nas estimativas nativas do Garmin Connect (Race Predictor, VO2max e Lactate Threshold Guidance) — não é um cálculo próprio do dashboard.</div>
+  </div><!-- /tab-predictions -->
+
+  <div id="tab-trainingLog" class="tab-panel">
+    <div class="panel">
+      <div class="tl-head">
+        <div>
+          <h2>Training Log</h2>
+          <div class="sub">Clique em um dia pra registrar ou editar um treino. rTSS estimado a partir do pace de cada etapa vs. seu pace de limiar (4:20/km).</div>
+        </div>
+        <div class="tl-legend">
+          <span><i class="dot" style="background:#e34948"></i>VO2</span>
+          <span><i class="dot" style="background:#eb6834"></i>Threshold</span>
+          <span><i class="dot" style="background:#3FA9A0"></i>Tempo</span>
+          <span><i class="dot" style="background:#9B6FD1"></i>Strides</span>
+          <span><i class="dot" style="background:#1baf7a"></i>Z2</span>
+          <span><i class="dot" style="background:#2a78d6"></i>Longão</span>
+        </div>
+      </div>
+
+      <div class="tl-cal-header">
+        <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
+        <div class="tl-week-label">Semana</div>
+      </div>
+
+      <div id="tlCalendar"></div>
+    </div>
+  </div><!-- /tab-trainingLog -->
+
+  <!-- Modal de sync -->
+  <div id="syncModalOverlay" class="sync-modal-overlay">
+    <div class="sync-modal">
+      <h3>Sync com Garmin</h3>
+      <p>Cole essa mensagem numa conversa com o Claude pra puxar suas atividades mais recentes do Garmin, recalcular rTSS, zonas e previsões, e atualizar este dashboard.</p>
+      <div class="prompt-box" id="syncPromptBox">Atualize meu dashboard de treino com minhas atividades mais recentes do Garmin.</div>
+      <p style="margin-bottom:6px;">Se preferir, peça pro Claude configurar uma sincronização automática (GitHub Actions já deixamos pronto pra isso).</p>
+      <div class="sync-modal-actions">
+        <span class="copied-msg" id="syncCopiedMsg">Copiado ✓</span>
+        <button class="tl-btn" id="syncCloseBtn">Fechar</button>
+        <button class="tl-btn tl-btn-primary" id="syncCopyBtn">Copiar mensagem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de edição de treino -->
+  <div id="tlModalOverlay" class="tl-modal-overlay">
+    <div class="tl-modal">
+      <div class="tl-modal-head">
+        <div>
+          <div class="tl-modal-date" id="tlModalDate">—</div>
+          <select id="tlStimulus" class="tl-select tl-stimulus-select">
+            <option value="vo2">VO2</option>
+            <option value="threshold">Threshold</option>
+            <option value="tempo">Tempo</option>
+            <option value="strides">Strides</option>
+            <option value="z2">Z2</option>
+            <option value="longao">Longão</option>
+          </select>
+        </div>
+        <button id="tlCloseBtn" class="tl-close">✕</button>
+      </div>
+
+      <div class="tl-section">
+        <div class="tl-section-title">Warm up</div>
+        <div class="tl-row">
+          <label>Tempo <input type="text" id="wuTime" placeholder="10:00"></label>
+          <label>Pace /km <input type="text" id="wuPace" placeholder="5:30"></label>
+          <label>Zona FC <select id="wuZone"><option value="">—</option><option>Z1</option><option>Z2</option><option>Z3</option><option>Z4</option><option>Z5</option></select></label>
+          <label>Potência W <input type="number" id="wuPower" placeholder="opcional"></label>
+        </div>
+      </div>
+
+      <div class="tl-section">
+        <div class="tl-section-title">Série</div>
+        <div class="tl-row">
+          <label>Reps <input type="number" id="serReps" placeholder="6"></label>
+          <label>Tempo/rep <input type="text" id="serWorkTime" placeholder="3:00"></label>
+          <label>Pace/rep <input type="text" id="serWorkPace" placeholder="3:55"></label>
+          <label>Zona FC <select id="serWorkZone"><option value="">—</option><option>Z1</option><option>Z2</option><option>Z3</option><option>Z4</option><option>Z5</option></select></label>
+          <label>Potência W <input type="number" id="serWorkPower" placeholder="opcional"></label>
+        </div>
+        <div class="tl-row">
+          <label>Descanso <input type="text" id="serRestTime" placeholder="1:30"></label>
+          <label>Pace descanso <input type="text" id="serRestPace" placeholder="6:30 (ou vazio p/ parado)"></label>
+          <label>Zona FC <select id="serRestZone"><option value="">—</option><option>Z1</option><option>Z2</option><option>Z3</option><option>Z4</option><option>Z5</option></select></label>
+        </div>
+      </div>
+
+      <div class="tl-section">
+        <div class="tl-section-title">Cool down</div>
+        <div class="tl-row">
+          <label>Tempo <input type="text" id="cdTime" placeholder="10:00"></label>
+          <label>Pace /km <input type="text" id="cdPace" placeholder="6:00"></label>
+          <label>Zona FC <select id="cdZone"><option value="">—</option><option>Z1</option><option>Z2</option><option>Z3</option><option>Z4</option><option>Z5</option></select></label>
+          <label>Potência W <input type="number" id="cdPower" placeholder="opcional"></label>
+        </div>
+      </div>
+
+      <div class="tl-summary" id="tlSummary">Distância: — · Duração: — · rTSS estimado: —</div>
+
+      <div class="tl-modal-actions">
+        <button id="tlDeleteBtn" class="tl-btn tl-btn-danger">Excluir</button>
+        <div style="flex:1"></div>
+        <button id="tlCancelBtn" class="tl-btn">Cancelar</button>
+        <button id="tlSaveBtn" class="tl-btn tl-btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">preview estático · dados fictícios · gerado para validação de layout</div>
+</div>
+
+<script>
+Chart.defaults.color = '#898781';
+Chart.defaults.font.family = "system-ui, -apple-system, sans-serif";
+Chart.defaults.font.size = 11;
+
+const zoneColors = { z1:'#2a78d6', z2:'#1baf7a', z3:'#eda100', z4:'#eb6834', z5:'#e34948' };
+
+// --- gráfico: pace e FC por km (último treino) ---
+new Chart(document.getElementById('splitsChart'), {
+  data: {
+    labels: ['1','2','3','4 (rec)','5','6','7','8 (rec)','9','10','11','12','13','14'],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Pace (s/km, invertido)',
+        data: [255,260,258,335,257,256,258,330,255,257,256,258,257,254].map(v => 400 - v),
+        backgroundColor: (ctx) => {
+          const recIdx = [3,7];
+          return recIdx.includes(ctx.dataIndex) ? '#c9d9f0' : '#eb6834';
+        },
+        yAxisID: 'y',
+        order: 2,
+      },
+      {
+        type: 'line',
+        label: 'FC (bpm)',
+        data: [140,155,161,148,162,163,163,150,164,163,162,163,161,159],
+        borderColor: '#e34948',
+        backgroundColor: '#e34948',
+        pointRadius: 3,
+        tension: 0.3,
+        yAxisID: 'y1',
+        order: 1,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 10.5 } } } },
+    scales: {
+      x: { grid: { display: false }, title: { display: true, text: 'km', color: '#898781' } },
+      y: { display: false },
+      y1: { position: 'right', grid: { color: '#e1e0d9' }, title: { display: true, text: 'bpm', color: '#898781' } }
+    }
+  }
+});
+
+// --- gráfico: zonas empilhadas por semana ---
+new Chart(document.getElementById('zoneWeekChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Sem -7','Sem -6','Sem -5','Sem -4','Sem -3','Sem -2','Sem -1','Atual'],
+    datasets: [
+      { label: 'Z1', data: [180,150,160,140,130,120,110,100], backgroundColor: zoneColors.z1, stack: 's' },
+      { label: 'Z2', data: [220,240,230,260,270,280,290,300], backgroundColor: zoneColors.z2, stack: 's' },
+      { label: 'Z3', data: [90,80,70,60,55,50,40,35],        backgroundColor: zoneColors.z3, stack: 's' },
+      { label: 'Z4', data: [60,65,70,75,80,85,90,95],        backgroundColor: zoneColors.z4, stack: 's' },
+      { label: 'Z5', data: [15,15,18,18,20,20,22,22],        backgroundColor: zoneColors.z5, stack: 's' },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { stacked: true, grid: { color: '#e1e0d9' } },
+      y: { stacked: true, grid: { color: '#e1e0d9' }, title: { display: true, text: 'minutos', color:'#898781' } }
+    }
+  }
+});
+
+// --- donut: zonas do período ---
+new Chart(document.getElementById('zoneDonut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Z1','Z2','Z3','Z4','Z5'],
+    datasets: [{ data: [100,300,35,95,22], backgroundColor: Object.values(zoneColors), borderColor: '#fcfcfb', borderWidth: 3 }]
+  },
+  options: {
+    responsive: true,
+    cutout: '68%',
+    plugins: { legend: { display: false } }
+  }
+});
+
+// --- linha: tendência VO2max ---
+const vo2Labels = Array.from({length: 14}, (_, i) => `Ativ. ${i+1}`);
+const vo2Data = [54,54,55,55,54,56,56,57,57,57,58,58,57,58];
+new Chart(document.getElementById('vo2Chart'), {
+  type: 'line',
+  data: {
+    labels: vo2Labels,
+    datasets: [{
+      data: vo2Data,
+      borderColor: '#2a78d6',
+      backgroundColor: 'rgba(42,120,214,0.08)',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 3,
+      pointBackgroundColor: '#2a78d6'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#e1e0d9' }, title: { display: true, text: 'VO2max', color:'#898781' } }
+    }
+  }
+});
+
+// --- tabela de atividades ---
+const activities = [
+  { z:'z4', date:'2026-07-11', name:'Duplo limiar — manhã', distKm:14.2, paceSec:258, hr:162, power:352, te:4.1 },
+  { z:'z2', date:'2026-07-10', name:'Rodagem regenerativa', distKm:8.0,  paceSec:335, hr:128, power:null, te:2.0 },
+  { z:'z5', date:'2026-07-09', name:'Tiros — Pacaembu',     distKm:11.5, paceSec:242, hr:171, power:368, te:4.6 },
+  { z:'z2', date:'2026-07-08', name:'Longão',               distKm:22.0, paceSec:305, hr:145, power:null, te:3.5 },
+  { z:'z4', date:'2026-07-06', name:'Duplo limiar — tarde', distKm:13.8, paceSec:262, hr:160, power:347, te:4.0 },
+  { z:'z1', date:'2026-07-05', name:'Trote leve',           distKm:6.0,  paceSec:370, hr:118, power:null, te:1.2 },
+];
+
+function fmtPace(sec) { return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}/km`; }
+function fmtDateShort(iso) { return `${iso.slice(8,10)}/${iso.slice(5,7)}`; }
+
+let activitySortState = { key: 'date', dir: -1 };
+
+function renderActivities() {
+  const q = document.getElementById('activitySearch').value.trim().toLowerCase();
+  let rows = activities.filter(a => !q || a.name.toLowerCase().includes(q));
+  rows = rows.slice().sort((a, b) => {
+    let va = a[activitySortState.key], vb = b[activitySortState.key];
+    if (va == null) va = -1;
+    if (vb == null) vb = -1;
+    if (va < vb) return -1 * activitySortState.dir;
+    if (va > vb) return 1 * activitySortState.dir;
+    return 0;
+  });
+
+  const tbody = document.getElementById('activityTableBody');
+  tbody.innerHTML = rows.map(a => `
+    <tr>
+      <td><span class="zone-dot" style="background:${zoneColors[a.z]}"></span></td>
+      <td>${fmtDateShort(a.date)}</td>
+      <td class="name-cell">${a.name}</td>
+      <td>${a.distKm.toFixed(1)} km</td>
+      <td>${fmtPace(a.paceSec)}</td>
+      <td>${a.hr}</td>
+      <td>${a.power ? a.power + 'W' : '—'}</td>
+      <td>${a.te}</td>
+    </tr>`).join('');
+
+  document.querySelectorAll('#activityTable th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.key === activitySortState.key);
+    th.setAttribute('data-dir', activitySortState.dir === 1 ? '▲' : '▼');
+  });
+}
+
+document.querySelectorAll('#activityTable th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (activitySortState.key === key) activitySortState.dir *= -1;
+    else { activitySortState.key = key; activitySortState.dir = 1; }
+    renderActivities();
+  });
+});
+document.getElementById('activitySearch').addEventListener('input', renderActivities);
+
+// --- modal de sync ---
+const syncOverlay = document.getElementById('syncModalOverlay');
+document.getElementById('syncBtn').addEventListener('click', () => syncOverlay.classList.add('active'));
+document.getElementById('syncCloseBtn').addEventListener('click', () => syncOverlay.classList.remove('active'));
+syncOverlay.addEventListener('click', (e) => { if (e.target === syncOverlay) syncOverlay.classList.remove('active'); });
+document.getElementById('syncCopyBtn').addEventListener('click', () => {
+  const text = document.getElementById('syncPromptBox').textContent;
+  const msg = document.getElementById('syncCopiedMsg');
+  const done = () => { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 1600); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => {
+      const r = document.createRange(); r.selectNode(document.getElementById('syncPromptBox'));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r); done();
+    });
+  } else {
+    const r = document.createRange(); r.selectNode(document.getElementById('syncPromptBox'));
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r); done();
+  }
+});
+
+// --- troca de abas ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// --- helper: formata segundos como m:ss ou h:mm:ss ---
+function fmtTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.round(totalSeconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+const predictLabels = ['-90d','-75d','-60d','-45d','-30d','-15d','Atual'];
+
+function makePredictChart(canvasId, dataSeconds) {
+  new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: {
+      labels: predictLabels,
+      datasets: [{
+        data: dataSeconds,
+        borderColor: '#2a78d6',
+        backgroundColor: 'rgba(42,120,214,0.08)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: '#2a78d6',
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => fmtTime(ctx.parsed.y) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9.5 } } },
+        y: {
+          reverse: true,
+          grid: { color: '#e1e0d9' },
+          ticks: { callback: (v) => fmtTime(v), font: { size: 9.5 } }
+        }
+      }
+    }
+  });
+}
+
+makePredictChart('predict5k',  [1210, 1204, 1199, 1194, 1189, 1185, 1182]);
+makePredictChart('predict10k', [2517, 2505, 2496, 2485, 2475, 2470, 2465]);
+makePredictChart('predictHM',  [5610, 5580, 5540, 5500, 5460, 5420, 5480]);
+makePredictChart('predictM',   [11330, 11290, 11230, 11170, 11110, 11060, 11050]);
+
+// --- Lactate Threshold: pace (eixo invertido) e FC ---
+new Chart(document.getElementById('ltChart'), {
+  data: {
+    labels: predictLabels,
+    datasets: [
+      {
+        type: 'line',
+        label: 'Pace no LT (min/km)',
+        data: [265,262,260,258,256,254,252], // segundos por km
+        borderColor: '#2a78d6',
+        backgroundColor: '#2a78d6',
+        pointRadius: 3,
+        tension: 0.3,
+        yAxisID: 'yPace',
+      },
+      {
+        type: 'line',
+        label: 'FC no LT (bpm)',
+        data: [161,161,162,162,163,163,163],
+        borderColor: '#e34948',
+        backgroundColor: '#e34948',
+        pointRadius: 3,
+        tension: 0.3,
+        yAxisID: 'yHr',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 10.5 } } },
+      tooltip: { callbacks: { label: (ctx) => ctx.dataset.yAxisID === 'yPace' ? `Pace: ${fmtTime(ctx.parsed.y)}/km` : `FC: ${ctx.parsed.y} bpm` } }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      yPace: { reverse: true, position: 'left', grid: { color: '#e1e0d9' }, ticks: { callback: (v) => fmtTime(v) }, title: { display: true, text: 'min/km', color: '#898781' } },
+      yHr: { position: 'right', grid: { display: false }, title: { display: true, text: 'bpm', color: '#898781' } }
+    }
+  }
+});
+
+renderActivities();
+
+// ======================================================================
+// TRAINING LOG
+// ======================================================================
+
+const STIMULUS_META = {
+  vo2:       { label: 'VO2',       color: '#e34948' },
+  threshold: { label: 'Threshold', color: '#eb6834' },
+  tempo:     { label: 'Tempo',     color: '#3FA9A0' },
+  strides:   { label: 'Strides',   color: '#9B6FD1' },
+  z2:        { label: 'Z2',        color: '#1baf7a' },
+  longao:    { label: 'Longão',    color: '#2a78d6' },
+};
+
+let THRESHOLD_PACE_SEC = 260; // 4:20/km — referência pra cálculo do IF (ajustável na aba Predictions)
+
+function parseMMSS(str) {
+  if (!str) return null;
+  const parts = String(str).trim().split(':').map(Number);
+  if (parts.some(isNaN)) return null;
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
+
+function fmtDur(totalSec) {
+  if (!totalSec) return '0:00';
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = Math.round(totalSec % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// rTSS por segmento: TSS = horas * IF^2 * 100, IF = pace_limiar / pace_segmento
+// (segmento mais rápido que o limiar => IF > 1 => TSS por hora mais alto; mesma lógica do TSS de potência/ciclismo aplicada ao pace)
+function segmentCalc(durationSec, paceSecPerKm) {
+  if (!durationSec || !paceSecPerKm) return { distanceKm: 0, tss: 0 };
+  const distanceKm = durationSec / paceSecPerKm;
+  const IF = THRESHOLD_PACE_SEC / paceSecPerKm;
+  const tss = (durationSec / 3600) * IF * IF * 100;
+  return { distanceKm, tss };
+}
+
+function computeWorkout(w) {
+  let distanceKm = 0, durationSec = 0, tss = 0;
+
+  const wuTime = parseMMSS(w.warmup.time);
+  const wu = segmentCalc(wuTime, parseMMSS(w.warmup.pace));
+  distanceKm += wu.distanceKm; durationSec += wuTime || 0; tss += wu.tss;
+
+  const reps = parseInt(w.series.reps) || 0;
+  if (reps > 0) {
+    const workTime = parseMMSS(w.series.workTime);
+    const work = segmentCalc(workTime, parseMMSS(w.series.workPace));
+    distanceKm += work.distanceKm * reps;
+    durationSec += (workTime || 0) * reps;
+    tss += work.tss * reps;
+
+    const restCount = Math.max(reps - 1, 0);
+    const restTime = parseMMSS(w.series.restTime);
+    if (restCount > 0 && restTime) {
+      const rest = segmentCalc(restTime, parseMMSS(w.series.restPace));
+      distanceKm += rest.distanceKm * restCount;
+      durationSec += restTime * restCount;
+      tss += rest.tss * restCount;
+    } else if (restCount > 0 && restTime) {
+      durationSec += restTime * restCount;
+    }
+  }
+
+  const cdTime = parseMMSS(w.cooldown.time);
+  const cd = segmentCalc(cdTime, parseMMSS(w.cooldown.pace));
+  distanceKm += cd.distanceKm; durationSec += cdTime || 0; tss += cd.tss;
+
+  return { distanceKm, durationSec, tss };
+}
+
+function blankWorkout(stimulus) {
+  return {
+    stimulus: stimulus || 'z2',
+    warmup:  { time: '', pace: '', zone: '', power: '' },
+    series:  { reps: '', workTime: '', workPace: '', workZone: '', workPower: '', restTime: '', restPace: '', restZone: '' },
+    cooldown:{ time: '', pace: '', zone: '', power: '' },
+  };
+}
+
+// --- dados fictícios pré-carregados ---
+const trainingLog = {
+  '2026-06-21': blankWorkout('longao'),
+  '2026-06-24': blankWorkout('vo2'),
+  '2026-06-28': blankWorkout('longao'),
+  '2026-07-01': blankWorkout('tempo'),
+  '2026-07-05': blankWorkout('z2'),
+  '2026-07-06': blankWorkout('threshold'),
+  '2026-07-08': blankWorkout('longao'),
+  '2026-07-09': blankWorkout('vo2'),
+  '2026-07-10': blankWorkout('z2'),
+  '2026-07-11': blankWorkout('threshold'),
+};
+trainingLog['2026-06-21'].warmup = { time: '2:00:00', pace: '5:10', zone: 'Z2', power: '' };
+trainingLog['2026-06-24'].warmup = { time: '15:00', pace: '5:20', zone: 'Z2', power: '' };
+trainingLog['2026-06-24'].series = { reps: '8', workTime: '1:30', workPace: '3:45', workZone: 'Z5', workPower: '', restTime: '1:30', restPace: '7:00', restZone: 'Z2' };
+trainingLog['2026-06-24'].cooldown = { time: '10:00', pace: '5:50', zone: 'Z1', power: '' };
+trainingLog['2026-06-28'].warmup = { time: '1:50:00', pace: '5:15', zone: 'Z2', power: '' };
+trainingLog['2026-07-01'].warmup = { time: '10:00', pace: '5:10', zone: 'Z2', power: '' };
+trainingLog['2026-07-01'].series = { reps: '3', workTime: '8:00', workPace: '4:35', workZone: 'Z3', workPower: '', restTime: '2:00', restPace: '6:00', restZone: 'Z2' };
+trainingLog['2026-07-01'].cooldown = { time: '10:00', pace: '5:45', zone: 'Z1', power: '' };
+trainingLog['2026-07-05'].warmup = { time: '35:00', pace: '6:10', zone: 'Z1', power: '' };
+trainingLog['2026-07-06'].warmup = { time: '10:00', pace: '5:35', zone: 'Z2', power: '' };
+trainingLog['2026-07-06'].series = { reps: '2', workTime: '14:00', workPace: '4:22', workZone: 'Z4', workPower: '347', restTime: '3:00', restPace: '6:00', restZone: 'Z2' };
+trainingLog['2026-07-06'].cooldown = { time: '10:00', pace: '5:50', zone: 'Z1', power: '' };
+trainingLog['2026-07-08'].warmup = { time: '2:00:00', pace: '5:05', zone: 'Z2', power: '' };
+trainingLog['2026-07-09'].warmup = { time: '15:00', pace: '5:20', zone: 'Z2', power: '' };
+trainingLog['2026-07-09'].series = { reps: '8', workTime: '1:30', workPace: '3:45', workZone: 'Z5', workPower: '368', restTime: '1:30', restPace: '7:00', restZone: 'Z2' };
+trainingLog['2026-07-09'].cooldown = { time: '10:00', pace: '5:50', zone: 'Z1', power: '' };
+trainingLog['2026-07-10'].warmup = { time: '45:00', pace: '5:35', zone: 'Z2', power: '' };
+trainingLog['2026-07-11'].warmup = { time: '10:00', pace: '5:30', zone: 'Z2', power: '' };
+trainingLog['2026-07-11'].series = { reps: '2', workTime: '15:00', workPace: '4:18', workZone: 'Z4', workPower: '352', restTime: '3:00', restPace: '6:00', restZone: 'Z2' };
+trainingLog['2026-07-11'].cooldown = { time: '10:00', pace: '5:45', zone: 'Z1', power: '' };
+
+const DAY_LABELS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+const WEEK_STARTS = ['2026-06-15','2026-06-22','2026-06-29','2026-07-06']; // segundas-feiras
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtDateLabel(dateKey) {
+  const d = new Date(dateKey + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+
+let currentEditingDateKey = null;
+
+function renderCalendar() {
+  const container = document.getElementById('tlCalendar');
+  container.innerHTML = '';
+
+  WEEK_STARTS.forEach(weekStart => {
+    const row = document.createElement('div');
+    row.className = 'tl-week-row';
+
+    let weekDist = 0, weekDur = 0, weekTss = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const dateKey = addDays(weekStart, i);
+      const w = trainingLog[dateKey];
+      const cell = document.createElement('div');
+      cell.dataset.date = dateKey;
+
+      if (w) {
+        const { distanceKm, durationSec, tss } = computeWorkout(w);
+        weekDist += distanceKm; weekDur += durationSec; weekTss += tss;
+        const meta = STIMULUS_META[w.stimulus];
+        cell.className = 'tl-day';
+        cell.innerHTML = `
+          <div class="tl-day-date">${dateKey.slice(8,10)}/${dateKey.slice(5,7)}</div>
+          <span class="tl-day-tag" style="background:${meta.color}">${meta.label}</span>
+          <div class="tl-day-stats">${distanceKm.toFixed(1)}km · ${fmtDur(durationSec)}<br>rTSS ${Math.round(tss)}</div>
+        `;
+      } else {
+        cell.className = 'tl-day empty';
+        cell.innerHTML = `<div class="tl-day-date" style="align-self:flex-start;">${dateKey.slice(8,10)}/${dateKey.slice(5,7)}</div>+`;
+      }
+      cell.addEventListener('click', () => openModal(dateKey));
+      row.appendChild(cell);
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'tl-week-summary';
+    summary.innerHTML = `
+      <div class="k">rTSS total</div><div class="v">${Math.round(weekTss)}</div>
+      <div class="k" style="margin-top:6px;">Km</div><div class="v">${weekDist.toFixed(1)}</div>
+      <div class="k" style="margin-top:6px;">Tempo</div><div class="v">${fmtDur(weekDur)}</div>
+    `;
+    row.appendChild(summary);
+
+    container.appendChild(row);
+  });
+}
+
+function fillField(id, val) { document.getElementById(id).value = val || ''; }
+
+function openModal(dateKey) {
+  currentEditingDateKey = dateKey;
+  const w = trainingLog[dateKey] || blankWorkout('z2');
+
+  document.getElementById('tlModalDate').textContent = fmtDateLabel(dateKey);
+  document.getElementById('tlStimulus').value = w.stimulus;
+
+  fillField('wuTime', w.warmup.time); fillField('wuPace', w.warmup.pace);
+  fillField('wuZone', w.warmup.zone); fillField('wuPower', w.warmup.power);
+
+  fillField('serReps', w.series.reps); fillField('serWorkTime', w.series.workTime);
+  fillField('serWorkPace', w.series.workPace); fillField('serWorkZone', w.series.workZone);
+  fillField('serWorkPower', w.series.workPower); fillField('serRestTime', w.series.restTime);
+  fillField('serRestPace', w.series.restPace); fillField('serRestZone', w.series.restZone);
+
+  fillField('cdTime', w.cooldown.time); fillField('cdPace', w.cooldown.pace);
+  fillField('cdZone', w.cooldown.zone); fillField('cdPower', w.cooldown.power);
+
+  document.getElementById('tlDeleteBtn').style.display = trainingLog[dateKey] ? 'inline-block' : 'none';
+
+  updateSummaryPreview();
+  document.getElementById('tlModalOverlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('tlModalOverlay').classList.remove('active');
+  currentEditingDateKey = null;
+}
+
+function readForm() {
+  return {
+    stimulus: document.getElementById('tlStimulus').value,
+    warmup: {
+      time: document.getElementById('wuTime').value, pace: document.getElementById('wuPace').value,
+      zone: document.getElementById('wuZone').value, power: document.getElementById('wuPower').value,
+    },
+    series: {
+      reps: document.getElementById('serReps').value, workTime: document.getElementById('serWorkTime').value,
+      workPace: document.getElementById('serWorkPace').value, workZone: document.getElementById('serWorkZone').value,
+      workPower: document.getElementById('serWorkPower').value, restTime: document.getElementById('serRestTime').value,
+      restPace: document.getElementById('serRestPace').value, restZone: document.getElementById('serRestZone').value,
+    },
+    cooldown: {
+      time: document.getElementById('cdTime').value, pace: document.getElementById('cdPace').value,
+      zone: document.getElementById('cdZone').value, power: document.getElementById('cdPower').value,
+    },
+  };
+}
+
+function updateSummaryPreview() {
+  const w = readForm();
+  const { distanceKm, durationSec, tss } = computeWorkout(w);
+  document.getElementById('tlSummary').textContent =
+    `Distância: ${distanceKm.toFixed(2)} km · Duração: ${fmtDur(durationSec)} · rTSS estimado: ${Math.round(tss)}`;
+}
+
+document.querySelectorAll('#tlModalOverlay input, #tlModalOverlay select').forEach(el => {
+  el.addEventListener('input', updateSummaryPreview);
+  el.addEventListener('change', updateSummaryPreview);
+});
+
+document.getElementById('tlCloseBtn').addEventListener('click', closeModal);
+document.getElementById('tlCancelBtn').addEventListener('click', closeModal);
+document.getElementById('tlModalOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'tlModalOverlay') closeModal();
+});
+
+document.getElementById('tlSaveBtn').addEventListener('click', () => {
+  if (!currentEditingDateKey) return;
+  trainingLog[currentEditingDateKey] = readForm();
+  renderCalendar();
+  closeModal();
+});
+
+document.getElementById('tlDeleteBtn').addEventListener('click', () => {
+  if (!currentEditingDateKey) return;
+  delete trainingLog[currentEditingDateKey];
+  renderCalendar();
+  closeModal();
+});
+
+document.getElementById('refThresholdPace').addEventListener('blur', (e) => {
+  const parsed = parseMMSS(e.target.textContent.replace('/km', '').trim());
+  if (parsed) {
+    THRESHOLD_PACE_SEC = parsed;
+    renderCalendar();
+  }
+});
+
+renderCalendar();
+
+</script>
+</body>
+</html>
