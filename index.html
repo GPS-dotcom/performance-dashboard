@@ -157,6 +157,132 @@ const ZONE_DEFS = [
   { zone:"Z5", label:"VO₂max",    pw:"> 413W",    hr:"> 178bpm",  pace:"< 3:35/km", color:"#FF3333", pct:120 },
 ];
 
+const DIFF_DOT = ["","#4CC9F0","#90E0EF","#E8A838","#F4A261","#E63946"];
+const DIFF_LABELS = ["","Leve","Mod","Intenso","Muito","Máx"];
+
+const LIBRARY = {
+  T: {
+    label:"Threshold", color:"#E8A838", zone:"Z3",
+    desc:"Pace: 3:55–4:05/km · FC: 173–179bpm · Pot: 380–400W",
+    items:[
+      { tag:"T-1", name:"Tempo Contínuo 25–30min", diff:3, when:"Semanas 1–4",
+        steps:["15min Z1 aquecimento","25–30min @ 3:55–4:05/km contínuo","10min Z1 + 4 strides"],
+        focus:"Acúmulo máximo no LT2", tip:"Se HR drift >10bpm, reduza 5seg/km" },
+      { tag:"T-2", name:"Split Tempo 2×15min", diff:3, when:"Semanas alternadas",
+        steps:["12min Z1","15min @ 3:55/km","5min trote Z1","15min @ 3:52/km (negativo)","8min Z1"],
+        focus:"Mais volume total no limiar com qualidade por bloco", tip:"Bloco 2 deve ser 3–5seg/km mais rápido" },
+      { tag:"T-3", name:"Tempo Progressivo M→LT2→HM", diff:4, when:"Semanas 5–8",
+        steps:["10min @ 4:00/km","10min @ 3:58/km","10min @ 3:55/km","5min @ 3:45/km","10min Z1"],
+        focus:"Simula transição metabólica da maratona", tip:"Excelente em semanas de carga alta" },
+      { tag:"T-4", name:"Hill Tempo 20min", diff:4, when:"A cada 3–4 semanas",
+        steps:["12min Z1 plano","20min @ percepção LT2 em subida 1–3%","10min trote descida"],
+        focus:"Força específica + LT2; use watt, não pace", tip:"Manter 393W = esforço correto em subida" },
+      { tag:"T-5", name:"Fartlek 6×5min", diff:3, when:"Semana de variação/calor",
+        steps:["10min Z1","6× (5min @ LT2 / 2min trote Z1)","8min Z1"],
+        focus:"30min totais no limiar com qualidade técnica por rep", tip:"Recovery de 2min ainda é fisiologicamente ativo" },
+      { tag:"T-6", name:"Finishing Kick", diff:5, when:"Semanas 10–12, 1×/mês",
+        steps:["12min Z1","20min @ 4:00/km","5min @ 3:55/km","5min @ 3:40/km (burst)","8min Z1"],
+        focus:"Tolerância ao lactato + simulação km 40–42", tip:"Burst não precisa ser sustentável — é tolerância" },
+    ]
+  },
+  CI: {
+    label:"Cruise Int.", color:"#F4A261", zone:"Z3",
+    desc:"Pace: 3:55–4:05/km · Rec: 90s trote · FC rec: ~165bpm",
+    items:[
+      { tag:"CI-1", name:"Clássico 3×2km", diff:3, when:"Toda segunda, Sem 1–4",
+        steps:["15min Z1 + 4 strides","3× 2km @ 3:55–4:00/km","Rec 90s trote","12min Z1"],
+        focus:"6km totais no LT2 com qualidade por rep", tip:"Se 3° rep >5seg mais lento, corte 1 rep" },
+      { tag:"CI-2", name:"Volume Alto 5×1.6km", diff:3, when:"Semanas 5–7",
+        steps:["12min Z1","5× 1600m @ 3:58/km","Rec 75s trote","10min Z1"],
+        focus:"8km totais no limiar — sessão de Canova", tip:"Rec de 75s é intencional; não estenda" },
+      { tag:"CI-3", name:"Ladder 1–2–3km", diff:4, when:"Semana 5–6",
+        steps:["12min Z1","1km @ 3:50/km | Rec 90s","2km @ 3:55/km | Rec 2min","3km @ 4:00/km | Rec 3min","10min Z1"],
+        focus:"6km totais com especificidade crescente", tip:"RPE uniforme (~7.5) em todos os reps" },
+      { tag:"CI-4", name:"Ladder 3–2–1km", diff:4, when:"Carga moderada",
+        steps:["12min Z1","3km @ 4:02/km | Rec 3min","2km @ 3:58/km | Rec 90s","1km @ 3:52/km | Rec 60s","10min Z1"],
+        focus:"Treina execução negativa; rep curta vira kick sob fadiga", tip:"Psicologicamente mais fácil: treino fica menor" },
+      { tag:"CI-5", name:"M-pace Sandwich", diff:4, when:"Semanas 9–12",
+        steps:["10min Z1","2km @ 4:00/km | Rec 60s","2km @ 3:55/km | Rec 90s","2km @ 3:55/km | Rec 90s","2km @ 4:00/km | Rec 60s","10min Z1"],
+        focus:"Especificidade máxima maratona: M-pace + LT2", tip:"Sessão Canova — M-pace ensina a escalar do limiar" },
+      { tag:"CI-6", name:"Mixed-pace Double Threshold", diff:5, when:"Semanas pico 10–13",
+        steps:["12min Z1","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","10min Z1"],
+        focus:"Alternância de zonas treina clearance dinâmico de lactato", tip:"Só usar em semanas de alta forma" },
+    ]
+  },
+  I: {
+    label:"VO₂max", color:"#E63946", zone:"Z4–Z5",
+    desc:"Pace: 3:25–3:35/km · FC >178bpm no final · Rec HRR ≤150bpm",
+    items:[
+      { tag:"I-1", name:"10–12×400m Clássico", diff:4, when:"Qua, Semanas 1–4",
+        steps:["15min Z1 + 4 strides","10–12× 400m @ 3:20–3:25/km","Rec HRR ≤150bpm (~90s)","12min Z1"],
+        focus:"Volume máximo em VO₂max — sessão calibrada no Ibirapuera", tip:"Estímulo acumula nas reps 7–12. Não acelere no começo" },
+      { tag:"I-2", name:"5×1000m", diff:4, when:"Semanas 4–7",
+        steps:["15min Z1","5× 1000m @ 3:28–3:32/km","Rec 2:30–3min trote","12min Z1"],
+        focus:"Reps de ~2:50min — ótimo para biogênese mitocondrial", tip:"Splits de 400m devem ser quase iguais dentro de cada rep" },
+      { tag:"I-3", name:"Ladder VO₂ 1200–400m", diff:5, when:"Semanas 6–8",
+        steps:["15min Z1","1200m @ 3:32/km | Rec 3min","1000m @ 3:30/km | Rec 2:30","800m @ 3:27/km | Rec 2min","600m @ 3:25/km | Rec 90s","2×400m @ 3:22/km | Rec 75s","12min Z1"],
+        focus:"Escalada de intensidade; recruta progressivamente fibras IIa", tip:"~5km totais de qualidade. Psicologicamente poderoso" },
+      { tag:"I-4", name:"6×800m", diff:4, when:"Quando pista disponível",
+        steps:["15min Z1 + 3 strides","6× 800m @ 3:26–3:30/km","Rec 2min trote","12min Z1"],
+        focus:"~2:48 por rep = máximo tempo em vVO₂max por rep", tip:"Se 2° 400m de cada rep for >3seg mais lento, reduza pace" },
+      { tag:"I-5", name:"Daniels Step Fartlek", diff:3, when:"Descarga ou trilha",
+        steps:["10min Z1 + strides","10H/10J → 20H/20J → ... → 90H/90J (passos)","8min Z1"],
+        focus:"~20min de VO₂max sem pressão de pace", tip:"H = passo forte por sensação de I-pace. J = trote leve" },
+      { tag:"I-6", name:"VO₂ Descanso Decrescente", diff:5, when:"Semana pico, 1× no ciclo",
+        steps:["15min Z1 + 4 strides","2× 1000m @ 3:30 | Rec 3min","2× 800m @ 3:27 | Rec 2min","2× 600m @ 3:25 | Rec 90s","2× 400m @ 3:22 | Rec 60s","12min Z1"],
+        focus:"Velocidade crescente + recuperação reduzida = tolerância ao lactato", tip:"Exige 2 dias Z1 depois. Só na forma máxima" },
+    ]
+  },
+  St: {
+    label:"Strides", color:"#06D6A0", zone:"Z5 breve",
+    desc:"80–100m a 85–90% esforço · 20–30seg · Rec: 60–90s caminhada · 4–8 reps",
+    items:[
+      { tag:"St-1", name:"Strides Clássicos Pós-Easy", diff:1, when:"2× semana",
+        steps:["Após easy run","6× 80–100m aceleração gradual → pico 85%","Rec 60–90s caminhada"],
+        focus:"Manter cadência 180–182spm e GCT <230ms", tip:"A aceleração nos primeiros 20m é o drill, não o trecho rápido" },
+      { tag:"St-2", name:"Hill Strides", diff:2, when:"1× semana",
+        steps:["Após easy run","6× 60–80m subida 4–5% @ 85% esforço","Trote suave de volta + 60s repouso"],
+        focus:"Força reativa → reduz GCT via adaptação SSC", tip:"Rigidez tendínea Aquiles → impacto direto no GCT plano" },
+      { tag:"St-3", name:"Pre-workout Primer", diff:1, when:"Antes de toda sessão de qualidade",
+        steps:["Após aquecimento Z1","3–4× 80m: aceleração 70%→80%→85%→90%","60s caminhada entre reps"],
+        focus:"Ativa fibras rápidas antes do treino principal", tip:"Nunca pule antes de sessões I-pace" },
+      { tag:"St-4", name:"Metronome Strides", diff:2, when:"1× semana, progressão ao longo do Build",
+        steps:["Metronome app em 182spm","6× 100m sincronizando passada a 85%","90s caminhada entre reps"],
+        focus:"Elevar cadência de 177 → 182spm sem alargar passada", tip:"Adaptação de cadência leva 6–8 semanas. Comece já" },
+      { tag:"St-5", name:"Post-Threshold Strides", diff:2, when:"Após T-1, T-2, CI-1",
+        steps:["Imediatamente após sessão T ou CI","4× 80–100m @ 85–88%","90s caminhada entre reps"],
+        focus:"Duplo estímulo neuromuscular + LT2 na mesma sessão", tip:"Melhor timing: temperatura corporal já elevada" },
+      { tag:"St-6", name:"Buildup Strides (Suave)", diff:1, when:"Descarga, após longão",
+        steps:["Após easy run","4× 120m: 60%→70%→80%→85% graduais","90s caminhada"],
+        focus:"Versão mais suave; ideal para dias de fadiga", tip:"Tensão na panturrilha ou Aquiles = parar" },
+    ]
+  },
+  R: {
+    label:"R-pace", color:"#9B5DE5", zone:"Z5+",
+    desc:"Pace: 3:00–3:10/km · Rec: FC retorna a 120–125bpm · Max por rep: <90seg",
+    items:[
+      { tag:"R-1", name:"8×200m Clássico", diff:3, when:"Início do Build / descarga",
+        steps:["15min Z1 + strides","8× 200m @ 3:00–3:10/km","Rec 200m trote lento (FC → 120bpm)","10min Z1"],
+        focus:"Economia de corrida pura — qualidade mecânica, não esforço", tip:"Se parecer fácil — ótimo. Não acelere" },
+      { tag:"R-2", name:"4–6×400m", diff:3, when:"Semanas 3–6",
+        steps:["15min Z1 + 4 strides","4–6× 400m @ 3:02–3:08/km","Rec 400m trote + 30s pausa","10min Z1"],
+        focus:"Rep mais longa em R-pace (~80seg) — limite Daniels", tip:"VDOT 58 permite até 400m em R-pace" },
+      { tag:"R-3", name:"Pirâmide 200–400–200m", diff:4, when:"Semanas 4–8",
+        steps:["15min Z1 + strides","200m → 300m → 400m → 300m → 200m @ R-pace","Rec = distância percorrida em trote","10min Z1"],
+        focus:"Variação de distância treina SSC de formas diferentes", tip:"1400m totais em R-pace com qualidade uniforme" },
+      { tag:"R-4", name:"Ciclos 200–200–400m", diff:3, when:"Semanas 5–8",
+        steps:["15min Z1","4× ciclos: 200m R + Rec 200m → 200m R + Rec 200m → 400m R + Rec 400m","10min Z1"],
+        focus:"3.2km totais em R-pace com boa recuperação entre ciclos", tip:"O 400m após dois 200m testa manutenção da economia" },
+      { tag:"R-5", name:"Hill R-pace 8–10×100m", diff:4, when:"1× a cada 2 semanas",
+        steps:["15min Z1 + strides planos","8–10× 100–120m em subida 5–8% @ esforço R-pace","Caminhada de volta completa (60–90s)","10min Z1 plano"],
+        focus:"Força reativa máxima + economia em um estímulo", tip:"Excelente para reduzir GCT de 254ms → <230ms" },
+      { tag:"R-6", name:"Fast Reps (acima de R-pace)", diff:5, when:"Pré-competitivo Sem 13–15",
+        steps:["15min Z1 + strides","6–8× 100–150m @ 2:54–2:57/km","Rec total — FC retorna a 115bpm","10min Z1"],
+        focus:"Velocidade pura e potência anaeróbica alática; stiffness Aquiles", tip:"Max: 2% volume semanal (~8×100m). Não exceder nunca" },
+    ]
+  },
+};
+
 const FITNESS_PROJ = [
   { x:"Atual", ctl:32, atl:44, tsb:-12 },
   { x:"W1",    ctl:38, atl:56, tsb:-18 },
@@ -712,10 +838,110 @@ function PageProjecao() {
   );
 }
 
+function PageLibrary() {
+  const [libCat, setLibCat] = useState(Object.keys(LIBRARY)[0]);
+  const [libOpen, setLibOpen] = useState(null);
+  const [libFilter, setLibFilter] = useState(0);
+  const cat = LIBRARY[libCat];
+
+  return (
+    <div className="page gap-14">
+      <div>
+        <div className="page-title">Biblioteca de Treinos</div>
+        <div className="page-sub">Sessões por tipo de estímulo · Threshold, Cruise Intervals, VO₂max, Strides, R-pace</div>
+      </div>
+
+      <div className="card" style={{ padding:0, overflow:"hidden" }}>
+        <div style={{ display:"flex", overflowX:"auto", borderBottom:"1px solid #eee" }}>
+          {Object.entries(LIBRARY).map(([k,c]) => (
+            <button key={k} onClick={() => { setLibCat(k); setLibOpen(null); setLibFilter(0); }} style={{
+              background: libCat===k ? c.color+"14" : "transparent",
+              border:"none", borderBottom: libCat===k ? `2px solid ${c.color}` : "2px solid transparent",
+              color: libCat===k ? c.color : "#888",
+              padding:"12px 16px", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
+            }}>
+              <span style={{ background:libCat===k?c.color+"22":"#f0f0f0", color:libCat===k?c.color:"#999", borderRadius:4, padding:"1px 6px", fontSize:10, marginRight:6, fontFamily:"'DM Mono',monospace" }}>{k}</span>
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ background:cat.color+"0D", borderBottom:`1px solid ${cat.color}22`, padding:"12px 20px" }}>
+          <div style={{ fontSize:10, color:cat.color, letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700, marginBottom:3 }}>{cat.zone}</div>
+          <div style={{ fontSize:12, color:"#666" }}>{cat.desc}</div>
+        </div>
+
+        <div style={{ padding:"12px 20px", display:"flex", gap:6, alignItems:"center", flexWrap:"wrap", borderBottom:"1px solid #f0f0f0" }}>
+          <span style={{ fontSize:10, color:"#aaa", fontWeight:700, letterSpacing:"0.08em" }}>DIFICULDADE</span>
+          {[0,1,2,3,4,5].map(d => (
+            <button key={d} onClick={()=>setLibFilter(d)} style={{
+              background: libFilter===d ? (d===0?"#111":DIFF_DOT[d]+"22") : "transparent",
+              border:`1px solid ${libFilter===d ? (d===0?"#111":DIFF_DOT[d]) : "#e5e5e5"}`,
+              color: libFilter===d ? (d===0?"#fff":DIFF_DOT[d]) : "#999",
+              borderRadius:20, padding:"3px 10px", fontSize:10, fontWeight:600, cursor:"pointer",
+            }}>{d===0?"Todos":DIFF_LABELS[d]}</button>
+          ))}
+        </div>
+
+        <div style={{ padding:"16px 20px 20px" }}>
+          {cat.items.filter(w => libFilter===0 || w.diff===libFilter).map(w => {
+            const isOpen = libOpen===w.tag;
+            return (
+              <div key={w.tag} style={{
+                background: isOpen ? cat.color+"08" : "#fff",
+                border:`1px solid ${isOpen ? cat.color+"44" : "#eee"}`,
+                borderRadius:10, marginBottom:10, overflow:"hidden",
+              }}>
+                <button onClick={()=>setLibOpen(isOpen?null:w.tag)} style={{
+                  width:"100%", background:"transparent", border:"none", padding:"13px 14px",
+                  display:"flex", alignItems:"center", gap:12, cursor:"pointer", textAlign:"left",
+                }}>
+                  <span style={{ background:cat.color+"1A", color:cat.color, borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", border:`1px solid ${cat.color}33`, flexShrink:0 }}>{w.tag}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#111" }}>{w.name}</div>
+                    <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>{w.when}</div>
+                  </div>
+                  <div style={{ display:"flex", gap:2, flexShrink:0 }}>
+                    {[1,2,3,4,5].map(i => <div key={i} style={{ width:6,height:6,borderRadius:"50%",background:i<=w.diff?DIFF_DOT[w.diff]:"#eee" }} />)}
+                  </div>
+                  <span style={{ color:cat.color, fontSize:13, transform:isOpen?"rotate(180deg)":"none", transition:"transform 0.2s", marginLeft:4 }}>▾</span>
+                </button>
+                {isOpen && (
+                  <div style={{ padding:"0 14px 14px" }}>
+                    <div style={{ height:1, background:"#f0f0f0", marginBottom:12 }} />
+                    <div style={{ marginBottom:12 }}>
+                      <div style={{ fontSize:10, color:"#aaa", letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700, marginBottom:8 }}>Estrutura</div>
+                      {w.steps.map((s,i) => (
+                        <div key={i} style={{ display:"flex", gap:9, marginBottom:5 }}>
+                          <div style={{ width:18,height:18,borderRadius:"50%",background:cat.color+"1A",border:`1px solid ${cat.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:cat.color,fontWeight:700,flexShrink:0,marginTop:1 }}>{i+1}</div>
+                          <div style={{ fontSize:12, color:"#555", lineHeight:1.5 }}>{s}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ background:cat.color+"0D", borderLeft:`3px solid ${cat.color}`, borderRadius:"0 8px 8px 0", padding:"8px 12px", marginBottom:8 }}>
+                      <div style={{ fontSize:9, color:cat.color, letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:700, marginBottom:2 }}>Foco</div>
+                      <div style={{ fontSize:12, color:"#333" }}>{w.focus}</div>
+                    </div>
+                    <div style={{ background:"#f8f8f6", borderRadius:8, padding:"8px 12px" }}>
+                      <div style={{ fontSize:9, color:"#aaa", fontWeight:700, marginBottom:2 }}>💡 EXECUÇÃO</div>
+                      <div style={{ fontSize:11, color:"#666", lineHeight:1.5 }}>{w.tip}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const PAGES = [
   { id:"overview", icon:"⬤", label:"Visão Geral",   component:PageOverview  },
   { id:"fitness",  icon:"📈", label:"Fitness",       component:PageFitness   },
+  { id:"library",  icon:"📚", label:"Biblioteca",    component:PageLibrary   },
   { id:"zones",    icon:"◉",  label:"Zonas",         component:PageZones     },
   { id:"plan",     icon:"▦",  label:"Plano 15sem",   component:PagePlan      },
   { id:"projecao", icon:"🎯", label:"Projeção",      component:PageProjecao  },
