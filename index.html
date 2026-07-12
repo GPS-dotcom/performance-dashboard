@@ -286,14 +286,14 @@ const LIBRARY = {
 const PLANNED_KEY = "gps_planned_workouts_v1";
 
 const WORKOUT_KINDS = {
-  Rest: { label:"Descanso",    color:"#ccc",    if:0    },
-  Easy: { label:"Easy/Z2",     color:"#4DABF7", if:0.75 },
-  Long: { label:"Longão",      color:"#9775FA", if:0.80 },
-  T:    { label:"Threshold",   color:"#E8A838", if:0.95 },
-  CI:   { label:"Cruise Int.", color:"#F4A261", if:0.95 },
-  I:    { label:"VO₂max",      color:"#E63946", if:1.05 },
-  St:   { label:"Strides",     color:"#06D6A0", if:1.05 },
-  R:    { label:"R-pace",      color:"#9B5DE5", if:1.05 },
+  Rest: { label:"Descanso",    color:"#ccc",    if:0,    zone:null },
+  Easy: { label:"Easy/Z2",     color:"#4DABF7", if:0.75, zone:"Z2" },
+  Long: { label:"Longão",      color:"#9775FA", if:0.80, zone:"Z2" },
+  T:    { label:"Threshold",   color:"#E8A838", if:0.95, zone:"Z4" },
+  CI:   { label:"Cruise Int.", color:"#F4A261", if:0.95, zone:"Z4" },
+  I:    { label:"VO₂max",      color:"#E63946", if:1.05, zone:"Z5" },
+  St:   { label:"Strides",     color:"#06D6A0", if:1.05, zone:"Z5" },
+  R:    { label:"R-pace",      color:"#9B5DE5", if:1.05, zone:"Z5" },
 };
 const INTERVAL_KINDS = ["T","CI","I","St","R"];
 
@@ -744,7 +744,27 @@ function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
   );
 }
 
-function PageZones() {
+function PageZones({ plannedWorkouts }) {
+  const byDate = {};
+  plannedWorkouts.forEach(w => { (byDate[w.date] = byDate[w.date] || []).push(w); });
+
+  const weekZoneData = WEEKS.map(w => {
+    const { startN, endN } = parseWeekRange(w.dates);
+    const zoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
+    let totalMin = 0;
+    for (let n=startN; n<=endN; n++) {
+      (byDate[ymdFromDayNum(n)] || []).forEach(wk => {
+        const zone = WORKOUT_KINDS[wk.kind]?.zone;
+        if (!zone || !wk.durationMin) return;
+        zoneMin[zone] += wk.durationMin;
+        totalMin += wk.durationMin;
+      });
+    }
+    const pct = {};
+    ZONE_DEFS.forEach(z => { pct[z.zone] = totalMin > 0 ? (zoneMin[z.zone]/totalMin*100) : 0; });
+    return { week:w, totalMin, pct };
+  });
+
   return (
     <div className="page gap-14">
       <div>
@@ -772,7 +792,39 @@ function PageZones() {
         </div>
         <div style={{ marginTop:14, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888" }}>
           <b style={{ color:"#111" }}>Nota:</b> Zonas baseadas em potência (Stryd) como âncora primária.
-          Distribuição de tempo por zona por treino exige dados de stream do Strava (ainda não sincronizados) — fale comigo se quiser que eu adicione isso.
+          Distribuição real de tempo por zona por treino exige dados de stream do Strava (ainda não sincronizados).
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-label">% de Tempo por Zona · por Semana (planejado)</div>
+        <div style={{ fontSize:11, color:"#aaa", marginBottom:14 }}>
+          Estimado a partir dos treinos cadastrados no calendário (Fitness Proj) — cada tipo de treino é
+          mapeado pra uma zona dominante (Easy/Longão → Z2, Threshold/Cruise Int. → Z4, VO₂max/Strides/R-pace → Z5).
+          Não é medição real, é aproximação pelo plano.
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {weekZoneData.map(({ week, totalMin, pct }) => (
+            <div key={week.n} style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:110, flexShrink:0, fontSize:11, color:"#666" }}>
+                Sem {week.n} <span style={{ color:"#bbb" }}>· {week.dates}</span>
+              </div>
+              {totalMin > 0 ? (
+                <div className="zone-bar" style={{ flex:1 }}>
+                  {ZONE_DEFS.map(z => pct[z.zone] > 0 && (
+                    <div key={z.zone} className="zone-bar-seg" style={{ width:`${pct[z.zone]}%`, background:z.color }} title={`${z.zone} · ${pct[z.zone].toFixed(0)}%`} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ flex:1, fontSize:11, color:"#ccc" }}>sem treinos cadastrados</div>
+              )}
+              <div style={{ display:"flex", gap:6, flexShrink:0, width:170, justifyContent:"flex-end" }}>
+                {ZONE_DEFS.filter(z => pct[z.zone] > 0).map(z => (
+                  <span key={z.zone} style={{ fontSize:10, color:z.color, fontWeight:700 }}>{z.zone} {pct[z.zone].toFixed(0)}%</span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1171,6 +1223,7 @@ function App() {
   const pageProps = page === "overview" ? { activities, latestPmc, daysOut }
                    : page === "fitness"  ? { pmc, latestPmc, plannedWorkouts }
                    : page === "plan"     ? { pmc, plannedWorkouts, setPlannedWorkouts }
+                   : page === "zones"    ? { plannedWorkouts }
                    : {};
 
   return (
