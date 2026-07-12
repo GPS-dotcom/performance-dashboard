@@ -715,7 +715,7 @@ function PageOverview({ activities, latestPmc, daysOut, plannedWorkouts }) {
                 <div className="stat-unit">tempo</div>
               </div>
               <div style={{ textAlign:"center" }}>
-                <div className="stat-hero sm" style={{ color:"#FF922B" }}>{avgPower}W</div>
+                <div className="stat-hero sm">{avgPower}W</div>
                 <div className="stat-unit">potência méd.</div>
               </div>
             </div>
@@ -815,12 +815,12 @@ function PageOverview({ activities, latestPmc, daysOut, plannedWorkouts }) {
       <div className="grid-2">
         <div className="card">
           <div className="card-label">Decoupling — Referência manual</div>
-          <div className="stat-hero" style={{ color:"#FF922B" }}>10.8%</div>
+          <div className="stat-hero">10.8%</div>
           <div style={{ fontSize:11, color:"#888", marginTop:6 }}>Target &lt;7% · último teste 27km</div>
         </div>
         <div className="card">
           <div className="card-label">Cadência Z2 — Referência manual</div>
-          <div className="stat-hero" style={{ color:"#FF922B" }}>177</div>
+          <div className="stat-hero">177</div>
           <div style={{ fontSize:11, color:"#888", marginTop:6 }}>spm · Target 180–182spm</div>
         </div>
       </div>
@@ -845,10 +845,10 @@ function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
           { l:"ATL · Fadiga",  v:Math.round(latestPmc.atl), d:"Calculada · decaimento 7d",    c:"#FF3333" },
           { l:"TSB · Forma",   v:Math.round(latestPmc.tsb), d:"Zona de construção", c:"#FCC419" },
         ].map(m => (
-          <div key={m.l} className="card" style={{ borderTop:`3px solid ${m.c}` }}>
+          <div key={m.l} className="card">
             <div className="card-label">{m.l}</div>
-            <div className="stat-hero" style={{ color:m.c }}>{m.v}</div>
-            <div style={{ fontSize:11, color:"#aaa", marginTop:6 }}>{m.d}</div>
+            <div className="stat-hero">{m.v}</div>
+            <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:6 }}>{m.d}</div>
           </div>
         ))}
       </div>
