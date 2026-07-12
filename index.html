@@ -864,24 +864,10 @@ function PageZones({ plannedWorkouts, activities }) {
             </tbody>
           </table>
         </div>
-        <div style={{ marginTop:14, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888" }}>
-          <b style={{ color:"#111" }}>Nota:</b> FC e pace vêm das zonas reais do seu perfil Strava (MaxHR ·
-          RacePace da meia maratona). Potência segue o modelo de referência do app — o Strava usa 7 zonas
-          estilo ciclismo (Coggan/FTP) que não mapeiam 1:1 pro modelo de corrida de 5 zonas usado aqui.
-          A distribuição por semana abaixo classifica cada treino numa zona dominante pela média de
-          potência/FC — uma distribuição segundo a segundo dentro do treino exige dados de stream do Strava
-          (não sincronizados).
-        </div>
       </div>
 
       <div className="card">
         <div className="card-label">% de Tempo por Zona · por Semana</div>
-        <div style={{ fontSize:11, color:"#aaa", marginBottom:14 }}>
-          <b style={{ color:"#888" }}>Real</b>: calculado a partir das atividades já sincronizadas do Strava
-          (potência ou FC média de cada treino, classificada nas faixas reais acima — uma zona dominante por
-          treino, não segundo a segundo). <b style={{ color:"#888" }}>Planejado</b>: treinos cadastrados no
-          calendário (Fitness Proj), usando a intensidade informada ou a zona dominante do tipo de treino.
-        </div>
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           {weekZoneData.map(({ week, real, planned }) => (
             <div key={week.n} style={{ paddingBottom:12, borderBottom:"1px solid #f5f5f5" }}>
