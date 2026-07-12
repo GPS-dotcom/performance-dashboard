@@ -830,13 +830,13 @@ function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
     <div className="page gap-14">
       <div>
         <div className="page-title">Fitness & Carga</div>
-        <div className="page-sub">Modelo Banister CTL/ATL/TSB · Dados reais + Projeção até Chicago</div>
+        <div className="page-sub">Modelo Banister CTL/ATL/TSB · Fitness = Relative Effort real do Strava, Fadiga calculada · Projeção até Chicago</div>
       </div>
 
       <div className="grid-3">
         {[
-          { l:"CTL · Fitness", v:Math.round(latestPmc.ctl), d:"Crônico 42 dias", c:"#4DABF7" },
-          { l:"ATL · Fadiga",  v:Math.round(latestPmc.atl), d:"Agudo 7 dias",    c:"#FF3333" },
+          { l:"CTL · Fitness", v:Math.round(latestPmc.ctl), d:"Carga real do Strava (Relative Effort) · 42d", c:"#4DABF7" },
+          { l:"ATL · Fadiga",  v:Math.round(latestPmc.atl), d:"Calculada · decaimento 7d",    c:"#FF3333" },
           { l:"TSB · Forma",   v:Math.round(latestPmc.tsb), d:"Zona de construção", c:"#FCC419" },
         ].map(m => (
           <div key={m.l} className="card" style={{ borderTop:`3px solid ${m.c}` }}>
@@ -849,6 +849,9 @@ function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
 
       <div className="card">
         <div className="card-label">Histórico Real — Últimos 90 dias</div>
+        <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
+          CTL a partir do Relative Effort de cada atividade (direto do Strava) · ATL/TSB calculados por decaimento exponencial (Banister)
+        </div>
         <MiniLineChart
           data={hist}
           lines={[
