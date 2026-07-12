@@ -295,6 +295,7 @@ const WORKOUT_KINDS = {
   St:   { label:"Strides",     color:"#06D6A0", if:1.05 },
   R:    { label:"R-pace",      color:"#9B5DE5", if:1.05 },
 };
+const INTERVAL_KINDS = ["T","CI","I","St","R"];
 
 function estimateRtss(durationMin, kind) {
   const iF = WORKOUT_KINDS[kind]?.if ?? 0;
@@ -780,7 +781,7 @@ function PageZones() {
 
 function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
   const [openDay, setOpenDay] = useState(null);
-  const [form, setForm] = useState({ kind:"Easy", durationMin:40, note:"" });
+  const [form, setForm] = useState({ kind:"Easy", durationMin:40, note:"", laps:"", intensityType:"pace", intensityValue:"" });
 
   const forecast = computeFitnessForecast(pmc, plannedWorkouts, RACE_DATE);
   const byDate = {};
@@ -788,17 +789,22 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
 
   function openForm(dateStr, existing) {
     setForm(existing
-      ? { id:existing.id, kind:existing.kind, durationMin:existing.durationMin, note:existing.note||"" }
-      : { kind:"Easy", durationMin:40, note:"" });
+      ? { id:existing.id, kind:existing.kind, durationMin:existing.durationMin, note:existing.note||"",
+          laps:existing.laps||"", intensityType:existing.intensityType||"pace", intensityValue:existing.intensityValue||"" }
+      : { kind:"Easy", durationMin:40, note:"", laps:"", intensityType:"pace", intensityValue:"" });
     setOpenDay(dateStr);
   }
 
   function saveForm(dateStr) {
     const estRtss = estimateRtss(form.durationMin, form.kind);
+    const laps = INTERVAL_KINDS.includes(form.kind) && form.laps !== "" ? parseInt(form.laps,10)||0 : undefined;
+    const fields = { kind:form.kind, durationMin:form.durationMin, note:form.note, laps,
+      intensityType:form.intensityValue ? form.intensityType : undefined,
+      intensityValue:form.intensityValue || undefined, estRtss };
     if (form.id) {
-      setPlannedWorkouts(prev => prev.map(w => w.id===form.id ? { ...w, kind:form.kind, durationMin:form.durationMin, note:form.note, estRtss } : w));
+      setPlannedWorkouts(prev => prev.map(w => w.id===form.id ? { ...w, ...fields } : w));
     } else {
-      setPlannedWorkouts(prev => [...prev, { id:`${dateStr}-${Date.now()}`, date:dateStr, kind:form.kind, durationMin:form.durationMin, note:form.note, estRtss }]);
+      setPlannedWorkouts(prev => [...prev, { id:`${dateStr}-${Date.now()}`, date:dateStr, ...fields }]);
     }
     setOpenDay(null);
   }
@@ -839,6 +845,7 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
           const dayNs = [];
           for (let n=startN; n<=endN; n++) dayNs.push(n);
           const weekHasOpenDay = dayNs.some(n => ymdFromDayNum(n) === openDay);
+          const weekRtss = dayNs.reduce((sum,n) => sum + (byDate[ymdFromDayNum(n)]||[]).reduce((s,wk)=>s+(wk.estRtss||0),0), 0);
 
           return (
             <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`} style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
@@ -849,9 +856,15 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
                   {w.race && <span style={{ marginLeft:8, fontSize:14 }}>🏅</span>}
                   <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>Semana {w.n} · {w.dates}</div>
                 </div>
-                <div style={{ textAlign:"right" }}>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500 }}>{w.vol}km</div>
-                  <div style={{ fontSize:10, color:"#888" }}>meta plano</div>
+                <div style={{ display:"flex", gap:18 }}>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500 }}>{w.vol}km</div>
+                    <div style={{ fontSize:10, color:"#888" }}>meta plano</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color:"#FF922B" }}>{weekRtss}</div>
+                    <div style={{ fontSize:10, color:"#888" }}>rTSS total</div>
+                  </div>
                 </div>
               </div>
 
@@ -869,7 +882,12 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
                             textAlign:"left", border:"none", borderRadius:5, padding:"3px 6px", fontSize:10, fontWeight:700, cursor:"pointer",
                             background:(WORKOUT_KINDS[wk.kind]?.color||"#ccc")+"22", color:WORKOUT_KINDS[wk.kind]?.color||"#888",
                           }}>
-                            {WORKOUT_KINDS[wk.kind]?.label||wk.kind} · {wk.durationMin}min
+                            <div>{WORKOUT_KINDS[wk.kind]?.label||wk.kind} · {wk.durationMin}min</div>
+                            {(wk.laps || wk.intensityValue) && (
+                              <div style={{ fontWeight:500, opacity:0.8, marginTop:1 }}>
+                                {wk.laps ? `${wk.laps}x` : ""}{wk.laps && wk.intensityValue ? " @ " : ""}{wk.intensityValue||""}
+                              </div>
+                            )}
                           </button>
                         ))}
                         <button onClick={() => openForm(dateStr, null)} style={{
@@ -892,6 +910,22 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
                   <div>
                     <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Duração (min)</div>
                     <input type="number" min="0" value={form.durationMin} onChange={e=>setForm(f=>({ ...f, durationMin:parseInt(e.target.value)||0 }))} style={{ width:70, padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }} />
+                  </div>
+                  {INTERVAL_KINDS.includes(form.kind) && (
+                    <div>
+                      <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Nº séries/laps</div>
+                      <input type="number" min="0" placeholder="ex: 6" value={form.laps} onChange={e=>setForm(f=>({ ...f, laps:e.target.value }))} style={{ width:70, padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }} />
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Intensidade</div>
+                    <div style={{ display:"flex", gap:4 }}>
+                      <select value={form.intensityType} onChange={e=>setForm(f=>({ ...f, intensityType:e.target.value }))} style={{ padding:"5px 6px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }}>
+                        <option value="pace">Pace</option>
+                        <option value="power">Potência</option>
+                      </select>
+                      <input type="text" placeholder={form.intensityType==="pace" ? "3:30/km" : "395W"} value={form.intensityValue} onChange={e=>setForm(f=>({ ...f, intensityValue:e.target.value }))} style={{ width:90, padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }} />
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>rTSS estimado</div>
