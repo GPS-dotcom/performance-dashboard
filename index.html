@@ -283,24 +283,68 @@ const LIBRARY = {
   },
 };
 
-const FITNESS_PROJ = [
-  { x:"Atual", ctl:32, atl:44, tsb:-12 },
-  { x:"W1",    ctl:38, atl:56, tsb:-18 },
-  { x:"W2",    ctl:43, atl:59, tsb:-16 },
-  { x:"W3",    ctl:48, atl:62, tsb:-14 },
-  { x:"W4🏅",  ctl:46, atl:42, tsb:  4 },
-  { x:"W5",    ctl:48, atl:50, tsb: -2 },
-  { x:"W6",    ctl:54, atl:62, tsb: -8 },
-  { x:"W7",    ctl:58, atl:66, tsb: -8 },
-  { x:"W8↓",   ctl:58, atl:52, tsb:  6 },
-  { x:"W9",    ctl:62, atl:68, tsb: -6 },
-  { x:"W10",   ctl:65, atl:72, tsb: -7 },
-  { x:"W11",   ctl:67, atl:74, tsb: -7 },
-  { x:"W12↓",  ctl:66, atl:58, tsb:  8 },
-  { x:"T1",    ctl:64, atl:50, tsb: 14 },
-  { x:"T2",    ctl:61, atl:42, tsb: 19 },
-  { x:"RACE",  ctl:58, atl:36, tsb: 22 },
-];
+const PLANNED_KEY = "gps_planned_workouts_v1";
+
+const WORKOUT_KINDS = {
+  Rest: { label:"Descanso",    color:"#ccc",    if:0    },
+  Easy: { label:"Easy/Z2",     color:"#4DABF7", if:0.75 },
+  Long: { label:"Longão",      color:"#9775FA", if:0.80 },
+  T:    { label:"Threshold",   color:"#E8A838", if:0.95 },
+  CI:   { label:"Cruise Int.", color:"#F4A261", if:0.95 },
+  I:    { label:"VO₂max",      color:"#E63946", if:1.05 },
+  St:   { label:"Strides",     color:"#06D6A0", if:1.05 },
+  R:    { label:"R-pace",      color:"#9B5DE5", if:1.05 },
+};
+
+function estimateRtss(durationMin, kind) {
+  const iF = WORKOUT_KINDS[kind]?.if ?? 0;
+  return Math.round((durationMin/60) * iF*iF * 100);
+}
+
+// Datas representadas como "day number" (dias desde a epoch, via Date.UTC) para
+// nunca depender do fuso horário do navegador — evita deslocar o race day.
+const WEEK_MONTHS = { Jun:5, Jul:6, Ago:7, Set:8, Out:9 };
+function dayNum(y, m, d) { return Math.floor(Date.UTC(y, m, d) / 86400000); }
+function dayNumFromYMD(ymd) { const [y,m,d] = ymd.split("-").map(Number); return dayNum(y, m-1, d); }
+function ymdFromDayNum(n) {
+  const dt = new Date(n * 86400000);
+  const y = dt.getUTCFullYear(), m = String(dt.getUTCMonth()+1).padStart(2,"0"), d = String(dt.getUTCDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+const WEEKDAY_PT = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+function weekdayPtFromDayNum(n) { return WEEKDAY_PT[new Date(n * 86400000).getUTCDay()]; }
+
+function parseWeekRange(str, year=2026) {
+  const [l, r] = str.split("–");
+  const [lm, ld] = l.trim().split(" ");
+  const startN = dayNum(year, WEEK_MONTHS[lm], parseInt(ld,10));
+  const rParts = r.trim().split(" ");
+  const endN = rParts.length === 2
+    ? dayNum(year, WEEK_MONTHS[rParts[0]], parseInt(rParts[1],10))
+    : dayNum(year, WEEK_MONTHS[lm], parseInt(rParts[0],10));
+  return { startN, endN };
+}
+
+function computeFitnessForecast(pmc, plannedWorkouts, raceDate) {
+  const last = pmc.length ? pmc[pmc.length-1] : null;
+  let ctl = last?.ctl ?? 0, atl = last?.atl ?? 0;
+  const today = new Date();
+  const startN = last ? dayNumFromYMD(last.date) + 1 : dayNum(today.getFullYear(), today.getMonth(), today.getDate());
+  const raceN = dayNum(raceDate.getUTCFullYear(), raceDate.getUTCMonth(), raceDate.getUTCDate());
+  const byDate = {};
+  plannedWorkouts.forEach(w => { byDate[w.date] = (byDate[w.date]||0) + (w.estRtss||0); });
+
+  const out = [];
+  for (let n = startN; n <= raceN; n++) {
+    const tsb = ctl - atl;
+    const dateStr = ymdFromDayNum(n);
+    const tss = byDate[dateStr] || 0;
+    ctl += (tss - ctl) / 42;
+    atl += (tss - atl) / 7;
+    out.push({ x: dateStr.slice(5), date: dateStr, ctl, atl, tsb });
+  }
+  return out;
+}
 
 const WEEKS = [
   { n:0,  phase:"Transição", dates:"Jun 21–26",    vol:70,  quality:["2×10min Z4","12×400m"],                  long:27, status:"done"    },
@@ -573,8 +617,9 @@ function PageOverview({ activities, latestPmc, daysOut }) {
   );
 }
 
-function PageFitness({ pmc, latestPmc }) {
+function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
   const hist = pmc.slice(-90).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+  const forecast = computeFitnessForecast(pmc, plannedWorkouts, RACE_DATE);
 
   return (
     <div className="page gap-14">
@@ -616,12 +661,12 @@ function PageFitness({ pmc, latestPmc }) {
       </div>
 
       <div className="card">
-        <div className="card-label">Projeção CTL / ATL / TSB → Race Day (plano)</div>
+        <div className="card-label">Projeção CTL / ATL / TSB → Race Day (calendário)</div>
         <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
-          Zona verde TSB: +15 a +25 no race day · 🏅 = Meia SP City 26 Jul
+          Baseada nos treinos cadastrados na aba Fitness Proj · Zona verde TSB: +15 a +25 no race day
         </div>
         <MiniLineChart
-          data={FITNESS_PROJ}
+          data={forecast}
           lines={[
             { key:"ctl", color:"#4DABF7", width:2.5 },
             { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
@@ -733,39 +778,137 @@ function PageZones() {
   );
 }
 
-function PagePlan() {
+function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
+  const [openDay, setOpenDay] = useState(null);
+  const [form, setForm] = useState({ kind:"Easy", durationMin:40, note:"" });
+
+  const forecast = computeFitnessForecast(pmc, plannedWorkouts, RACE_DATE);
+  const byDate = {};
+  plannedWorkouts.forEach(w => { (byDate[w.date] = byDate[w.date] || []).push(w); });
+
+  function openForm(dateStr, existing) {
+    setForm(existing
+      ? { id:existing.id, kind:existing.kind, durationMin:existing.durationMin, note:existing.note||"" }
+      : { kind:"Easy", durationMin:40, note:"" });
+    setOpenDay(dateStr);
+  }
+
+  function saveForm(dateStr) {
+    const estRtss = estimateRtss(form.durationMin, form.kind);
+    if (form.id) {
+      setPlannedWorkouts(prev => prev.map(w => w.id===form.id ? { ...w, kind:form.kind, durationMin:form.durationMin, note:form.note, estRtss } : w));
+    } else {
+      setPlannedWorkouts(prev => [...prev, { id:`${dateStr}-${Date.now()}`, date:dateStr, kind:form.kind, durationMin:form.durationMin, note:form.note, estRtss }]);
+    }
+    setOpenDay(null);
+  }
+
+  function deleteWorkout(id) {
+    setPlannedWorkouts(prev => prev.filter(w => w.id !== id));
+    setOpenDay(null);
+  }
+
   return (
     <div className="page gap-14">
       <div>
-        <div className="page-title">Plano 15 Semanas</div>
-        <div className="page-sub">Build → Down → Block → Taper · Jun 28 – Out 11, 2026</div>
+        <div className="page-title">Fitness Proj</div>
+        <div className="page-sub">Calendário de treinos planejados · a previsão de CTL/ATL/TSB abaixo é a mesma exibida na aba Fitness</div>
       </div>
+
+      <div className="card">
+        <div className="card-label">Projeção resultante — hoje até o race day</div>
+        <MiniLineChart
+          data={forecast}
+          lines={[
+            { key:"ctl", color:"#4DABF7", width:2.5 },
+            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
+            { key:"tsb", color:"#FCC419", width:2.5 },
+          ]}
+          height={200}
+        />
+        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
+          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
+          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
+          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
+        </div>
+      </div>
+
       <div className="gap-14">
-        {WEEKS.map(w => (
-          <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`} style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-              <div>
-                <span style={{ fontSize:10, fontWeight:700, color: PHASE_COLORS[w.phase]||"#888", textTransform:"uppercase", letterSpacing:"0.1em" }}>{w.phase}</span>
-                {w.status==="current" && <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>}
-                <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>Semana {w.n} · {w.dates}</div>
+        {WEEKS.map(w => {
+          const { startN, endN } = parseWeekRange(w.dates);
+          const dayNs = [];
+          for (let n=startN; n<=endN; n++) dayNs.push(n);
+          const weekHasOpenDay = dayNs.some(n => ymdFromDayNum(n) === openDay);
+
+          return (
+            <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`} style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10, flexWrap:"wrap", gap:8 }}>
+                <div>
+                  <span style={{ fontSize:10, fontWeight:700, color: PHASE_COLORS[w.phase]||"#888", textTransform:"uppercase", letterSpacing:"0.1em" }}>{w.phase}</span>
+                  {w.status==="current" && <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>}
+                  {w.race && <span style={{ marginLeft:8, fontSize:14 }}>🏅</span>}
+                  <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>Semana {w.n} · {w.dates}</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500 }}>{w.vol}km</div>
+                  <div style={{ fontSize:10, color:"#888" }}>meta plano</div>
+                </div>
               </div>
-              <div style={{ textAlign:"right" }}>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500 }}>{w.vol}</div>
-                <div style={{ fontSize:10, color:"#888" }}>km plano</div>
+
+              <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
+                {dayNs.map(n => {
+                  const dateStr = ymdFromDayNum(n);
+                  const dayWorkouts = byDate[dateStr] || [];
+                  const isOpen = openDay === dateStr;
+                  return (
+                    <div key={dateStr} style={{ minWidth:104, flexShrink:0, border:`1px solid ${isOpen?"#111":"#eee"}`, borderRadius:8, padding:8, background: isOpen?"#fafafa":"#fff" }}>
+                      <div style={{ fontSize:10, color:"#aaa", fontWeight:700 }}>{weekdayPtFromDayNum(n)} {dateStr.slice(8)}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6, minHeight:20 }}>
+                        {dayWorkouts.map(wk => (
+                          <button key={wk.id} onClick={() => openForm(dateStr, wk)} style={{
+                            textAlign:"left", border:"none", borderRadius:5, padding:"3px 6px", fontSize:10, fontWeight:700, cursor:"pointer",
+                            background:(WORKOUT_KINDS[wk.kind]?.color||"#ccc")+"22", color:WORKOUT_KINDS[wk.kind]?.color||"#888",
+                          }}>
+                            {WORKOUT_KINDS[wk.kind]?.label||wk.kind} · {wk.durationMin}min
+                          </button>
+                        ))}
+                        <button onClick={() => openForm(dateStr, null)} style={{
+                          border:"1px dashed #ddd", background:"transparent", color:"#bbb", borderRadius:5, fontSize:11, padding:"3px 0", cursor:"pointer",
+                        }}>+ treino</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-              {w.quality.map((q,i) => (<div key={i} style={{ fontSize:12, color:"#666", display:"flex", gap:6 }}><span style={{ color:"#FF922B" }}>⚡</span>{q}</div>))}
-              {w.long > 0 && <div style={{ fontSize:12, color:"#9775FA" }}>🏃 Longão {w.long}km Z2</div>}
-              {w.race && (
-                <div style={{ marginTop:6, background:"#FFF8DC", border:"1px solid #E8FF0088", borderRadius:8, padding:"8px 12px", display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:18 }}>🏅</span>
-                  <div><div style={{ fontSize:12, fontWeight:700, color:"#111" }}>Meia SP City · Jul 26</div><div style={{ fontSize:11, color:"#888" }}>Alvo 1:20h · 3:47/km · validação intermediária</div></div>
+
+              {weekHasOpenDay && (
+                <div style={{ marginTop:10, padding:12, background:"#f8f8f6", borderRadius:8, display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+                  <div>
+                    <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Tipo</div>
+                    <select value={form.kind} onChange={e=>setForm(f=>({ ...f, kind:e.target.value }))} style={{ padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }}>
+                      {Object.entries(WORKOUT_KINDS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Duração (min)</div>
+                    <input type="number" min="0" value={form.durationMin} onChange={e=>setForm(f=>({ ...f, durationMin:parseInt(e.target.value)||0 }))} style={{ width:70, padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>rTSS estimado</div>
+                    <div style={{ padding:"5px 8px", fontFamily:"'DM Mono',monospace", fontSize:14 }}>{estimateRtss(form.durationMin, form.kind)}</div>
+                  </div>
+                  <div style={{ flex:1, minWidth:120 }}>
+                    <div style={{ fontSize:10, color:"#aaa", marginBottom:3 }}>Nota</div>
+                    <input type="text" value={form.note} onChange={e=>setForm(f=>({ ...f, note:e.target.value }))} style={{ width:"100%", padding:"5px 8px", borderRadius:6, border:"1px solid #ddd", fontSize:12 }} />
+                  </div>
+                  <button onClick={() => saveForm(openDay)} style={{ background:"#111", color:"#fff", border:"none", borderRadius:6, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>Salvar</button>
+                  {form.id && <button onClick={() => deleteWorkout(form.id)} style={{ background:"transparent", color:"#FF3333", border:"1px solid #FF3333", borderRadius:6, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>Excluir</button>}
+                  <button onClick={() => setOpenDay(null)} style={{ background:"transparent", color:"#888", border:"none", fontSize:12, cursor:"pointer" }}>Cancelar</button>
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -943,7 +1086,7 @@ const PAGES = [
   { id:"fitness",  icon:"📈", label:"Fitness",       component:PageFitness   },
   { id:"library",  icon:"📚", label:"Biblioteca",    component:PageLibrary   },
   { id:"zones",    icon:"◉",  label:"Zonas",         component:PageZones     },
-  { id:"plan",     icon:"▦",  label:"Plano 15sem",   component:PagePlan      },
+  { id:"plan",     icon:"📅", label:"Fitness Proj",  component:PagePlan      },
   { id:"projecao", icon:"🎯", label:"Projeção",      component:PageProjecao  },
 ];
 
@@ -953,6 +1096,13 @@ function App() {
   const [error, setError] = useState(null);
   const [activities, setActivities] = useState([]);
   const [pmc, setPmc] = useState([]);
+  const [plannedWorkouts, setPlannedWorkouts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(PLANNED_KEY)) || []; } catch { return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(PLANNED_KEY, JSON.stringify(plannedWorkouts));
+  }, [plannedWorkouts]);
 
   useEffect(() => {
     async function load() {
@@ -985,7 +1135,8 @@ function App() {
   const pageInfo = PAGES.find(p => p.id === page) || PAGES[0];
   const Current = pageInfo.component;
   const pageProps = page === "overview" ? { activities, latestPmc, daysOut }
-                   : page === "fitness"  ? { pmc, latestPmc }
+                   : page === "fitness"  ? { pmc, latestPmc, plannedWorkouts }
+                   : page === "plan"     ? { pmc, plannedWorkouts, setPlannedWorkouts }
                    : {};
 
   return (
