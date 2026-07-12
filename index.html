@@ -517,6 +517,44 @@ function classifyActivity(a) {
   return { label:"Z1", color:"#94D82D" };
 }
 
+// Compara o treino real com o que estava planejado no calendário (Fitness Proj)
+// pra esse mesmo dia. rTSS real vs planejado captura duração×intensidade num
+// número só; tempo na zona alvo mostra se a intensidade certa foi atingida.
+function analyzeExecution(activity, plannedWorkouts) {
+  if (!activity) return null;
+  const dateStr = activity.start_date.slice(0,10);
+  const planned = (plannedWorkouts||[]).filter(w => w.date === dateStr);
+
+  const zoneMin = activityZoneMinutes(activity);
+  const totalZoneMin = ZONE_DEFS.reduce((s,z) => s + (zoneMin[z.zone]||0), 0);
+  const zonePct = {};
+  ZONE_DEFS.forEach(z => { zonePct[z.zone] = totalZoneMin > 0 ? (zoneMin[z.zone]/totalZoneMin*100) : 0; });
+
+  if (planned.length === 0) {
+    return { hasPlan:false, zoneMin, zonePct, totalZoneMin };
+  }
+
+  const planDurationMin = planned.reduce((s,w) => s + (w.durationMin||0), 0);
+  const planRtss = planned.reduce((s,w) => s + (w.estRtss||0), 0);
+  const targetZone = WORKOUT_KINDS[planned[0].kind]?.zone || null;
+  const targetZonePct = targetZone ? zonePct[targetZone] : null;
+
+  const actualRtss = activity.rtss || 0;
+  const ratio = planRtss > 0 ? actualRtss / planRtss : null;
+
+  let verdict, verdictColor;
+  if (ratio == null) { verdict = "Sem estimativa pra comparar"; verdictColor = "#999"; }
+  else if (ratio >= 0.85 && ratio <= 1.15) { verdict = "Bem executado"; verdictColor = "#94D82D"; }
+  else if (ratio > 1.15) { verdict = "Mais puxado que o planejado"; verdictColor = "#FF922B"; }
+  else if (ratio >= 0.6) { verdict = "Abaixo do planejado"; verdictColor = "#FCC419"; }
+  else { verdict = "Muito abaixo do planejado"; verdictColor = "#FF3333"; }
+
+  return {
+    hasPlan:true, planDurationMin, planRtss, actualRtss, ratio, targetZone, targetZonePct,
+    verdict, verdictColor, zoneMin, zonePct, totalZoneMin,
+  };
+}
+
 // ─── CUSTOM SVG CHARTS (sem dependência externa) ─────────────────────────────
 function MiniLineChart({ data, lines, height=200, refLines=[] }) {
   const width = 700;
@@ -632,10 +670,11 @@ function SegmentFields({ label, mode, value, pace, onChange }) {
 }
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
-function PageOverview({ activities, latestPmc, daysOut }) {
+function PageOverview({ activities, latestPmc, daysOut, plannedWorkouts }) {
   const last = activities[0];
   const lastType = last ? classifyActivity(last) : null;
   const avgPower = last ? Math.round(last.weighted_average_watts || last.average_watts || 0) : 0;
+  const exec = last ? analyzeExecution(last, plannedWorkouts) : null;
 
   return (
     <div className="page gap-14">
@@ -693,6 +732,46 @@ function PageOverview({ activities, latestPmc, daysOut }) {
               {lastType && <span className="type-badge" style={{ background:lastType.color+"22", color:lastType.color }}>{lastType.label}</span>}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Análise de execução — compara o treino real com o planejado no calendário */}
+      {exec && (
+        <div className="card">
+          <div className="card-label">Análise de Execução</div>
+          {exec.hasPlan ? (
+            <>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
+                <span className="type-badge" style={{ background:exec.verdictColor+"22", color:exec.verdictColor, fontSize:12, padding:"4px 12px" }}>{exec.verdict}</span>
+                <span style={{ fontSize:12, color:"#888" }}>
+                  rTSS real {Math.round(exec.actualRtss)} vs planejado {Math.round(exec.planRtss)}
+                  {exec.ratio!=null && ` (${Math.round(exec.ratio*100)}%)`}
+                </span>
+              </div>
+              <div className="grid-2" style={{ gap:10, marginBottom:12 }}>
+                <div>
+                  <div className="card-label">Duração</div>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16 }}>
+                    {fmtDuration(last.moving_time_s)} <span style={{ color:"#bbb", fontSize:11, fontFamily:"'Inter',sans-serif" }}>plano: {Math.round(exec.planDurationMin)}min</span>
+                  </div>
+                </div>
+                {exec.targetZone && (
+                  <div>
+                    <div className="card-label">Tempo na zona alvo ({exec.targetZone})</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16 }}>{exec.targetZonePct!=null ? `${exec.targetZonePct.toFixed(0)}%` : "–"}</div>
+                  </div>
+                )}
+              </div>
+              {exec.totalZoneMin > 0 && <ZoneTimeRow label="Real" totalMin={exec.totalZoneMin} pct={exec.zonePct} empty="" />}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize:12, color:"#888", marginBottom:10 }}>
+                Sem treino planejado nesse dia no calendário (Fitness Proj) — não dá pra comparar com o plano.
+              </div>
+              {exec.totalZoneMin > 0 && <ZoneTimeRow label="Real" totalMin={exec.totalZoneMin} pct={exec.zonePct} empty="" />}
+            </>
+          )}
         </div>
       )}
 
@@ -1421,7 +1500,7 @@ function App() {
 
   const pageInfo = PAGES.find(p => p.id === page) || PAGES[0];
   const Current = pageInfo.component;
-  const pageProps = page === "overview" ? { activities, latestPmc, daysOut }
+  const pageProps = page === "overview" ? { activities, latestPmc, daysOut, plannedWorkouts }
                    : page === "fitness"  ? { pmc, latestPmc, plannedWorkouts }
                    : page === "plan"     ? { pmc, plannedWorkouts, setPlannedWorkouts }
                    : page === "zones"    ? { plannedWorkouts, activities }
