@@ -191,6 +191,30 @@ function classifyActivityZone(a) {
   return null;
 }
 
+// Snapshot manual (via laps do Strava, validado contra distância/tempo do resumo
+// de cada atividade) — corrige o mascaramento de zona em treinos intervalados,
+// já que potência/FC média do treino inteiro dilui os tiros fortes com a
+// recuperação. Gerado em 2026-07-12; não atualiza sozinho — treinos fora desta
+// lista (incluindo os futuros) usam a classificação por média em
+// classifyActivityZone.
+const ACTIVITY_ZONE_OVERRIDE = {
+  "19243396435": { Z1:23.4, Z2:7.5,  Z3:0,   Z4:0,    Z5:16.6 },
+  "19135972524": { Z1:28.7, Z2:30,   Z3:1.6, Z4:0,    Z5:16.5 },
+  "19108888820": { Z1:32.9, Z2:20,   Z3:1,   Z4:19,   Z5:10   },
+  "19047490584": { Z1:28.5, Z2:34.8, Z3:0,   Z4:1.5,  Z5:15.3 },
+  "19010943823": { Z1:9.5,  Z2:29.1, Z3:6.8, Z4:6.1,  Z5:13.9 },
+  "18941613600": { Z1:35.1, Z2:19.5, Z3:0,   Z4:11.8, Z5:11.5 },
+};
+
+function activityZoneMinutes(a) {
+  const override = ACTIVITY_ZONE_OVERRIDE[String(a.id)];
+  if (override) return override;
+  const zone = classifyActivityZone(a);
+  const out = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
+  if (zone) out[zone] = (a.moving_time_s||0)/60;
+  return out;
+}
+
 const DIFF_DOT = ["","#4CC9F0","#90E0EF","#E8A838","#F4A261","#E63946"];
 const DIFF_LABELS = ["","Leve","Mod","Intenso","Muito","Máx"];
 
@@ -804,14 +828,12 @@ function PageZones({ plannedWorkouts, activities }) {
   const byDate = {};
   plannedWorkouts.forEach(w => { (byDate[w.date] = byDate[w.date] || []).push(w); });
 
-  function zoneBreakdown(zoneMinutesEntries) {
+  function zoneBreakdown(zoneMinObjects) {
     const zoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
-    let totalMin = 0;
-    zoneMinutesEntries.forEach(([zone, min]) => {
-      if (!zone || !min) return;
-      zoneMin[zone] += min;
-      totalMin += min;
+    zoneMinObjects.forEach(zm => {
+      ZONE_DEFS.forEach(z => { zoneMin[z.zone] += zm[z.zone] || 0; });
     });
+    const totalMin = ZONE_DEFS.reduce((s,z) => s + zoneMin[z.zone], 0);
     const pct = {};
     ZONE_DEFS.forEach(z => { pct[z.zone] = totalMin > 0 ? (zoneMin[z.zone]/totalMin*100) : 0; });
     return { totalMin, pct };
@@ -824,14 +846,15 @@ function PageZones({ plannedWorkouts, activities }) {
     const real = zoneBreakdown(
       activities
         .filter(a => { const d = a.start_date.slice(0,10); return d >= startStr && d <= endStr; })
-        .map(a => [classifyActivityZone(a), (a.moving_time_s||0)/60])
+        .map(a => activityZoneMinutes(a))
     );
 
     const plannedEntries = [];
     for (let n=startN; n<=endN; n++) {
       (byDate[ymdFromDayNum(n)] || []).forEach(wk => {
         const zone = classifyIntensity(wk.intensityType, wk.intensityValue) || WORKOUT_KINDS[wk.kind]?.zone;
-        plannedEntries.push([zone, wk.durationMin]);
+        if (!zone || !wk.durationMin) return;
+        plannedEntries.push({ [zone]: wk.durationMin });
       });
     }
     const planned = zoneBreakdown(plannedEntries);
