@@ -149,13 +149,38 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const RACE_DATE = new Date("2026-10-11");
 const VDOT = 58; const FTP = 393;
 
+// HR e pace vêm das zonas reais do perfil Strava (get_athlete_zones: MaxHR 5-zonas,
+// pace por RacePace/meia maratona). Potência mantém o modelo de referência do app —
+// o Strava usa 7 zonas estilo Coggan (ciclismo), que não mapeiam 1:1 pro modelo de
+// corrida de 5 zonas usado aqui.
 const ZONE_DEFS = [
-  { zone:"Z1", label:"Recovery",  pw:"< 315W",    hr:"< 133bpm",  pace:"> 5:30/km", color:"#94D82D", pct:80  },
-  { zone:"Z2", label:"Aeróbio",   pw:"315–353W",  hr:"134–152",   pace:"5:00–5:30", color:"#4DABF7", pct:100 },
-  { zone:"Z3", label:"Tempo",     pw:"354–383W",  hr:"153–165",   pace:"4:30–5:00", color:"#FCC419", pct:90  },
-  { zone:"Z4", label:"Threshold", pw:"384–412W",  hr:"166–178",   pace:"3:55–4:10", color:"#FF922B", pct:105 },
-  { zone:"Z5", label:"VO₂max",    pw:"> 413W",    hr:"> 178bpm",  pace:"< 3:35/km", color:"#FF3333", pct:120 },
+  { zone:"Z1", label:"Recovery",  pw:"< 315W",    pwMax:315,          hr:"< 128bpm",  hrMax:127,          pace:"> 5:14/km",  paceFast:5.235, color:"#94D82D", pct:80  },
+  { zone:"Z2", label:"Aeróbio",   pw:"315–353W",  pwMax:353,          hr:"128–159",   hrMax:159,          pace:"4:30–5:14",  paceFast:4.506, color:"#4DABF7", pct:100 },
+  { zone:"Z3", label:"Tempo",     pw:"354–383W",  pwMax:383,          hr:"160–174",   hrMax:174,          pace:"4:03–4:30",  paceFast:4.046, color:"#FCC419", pct:90  },
+  { zone:"Z4", label:"Threshold", pw:"384–412W",  pwMax:412,          hr:"175–190",   hrMax:190,          pace:"3:47–4:03",  paceFast:3.788, color:"#FF922B", pct:105 },
+  { zone:"Z5", label:"VO₂max",    pw:"> 413W",    pwMax:Infinity,     hr:"> 190bpm",  hrMax:Infinity,     pace:"< 3:47/km",  paceFast:0,     color:"#FF3333", pct:120 },
 ];
+
+function parsePaceMin(str) {
+  const m = String(str).match(/(\d+):(\d{1,2})/);
+  return m ? parseInt(m[1],10) + parseInt(m[2],10)/60 : null;
+}
+function parsePowerW(str) {
+  const m = String(str).match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+function classifyIntensity(type, value) {
+  if (!value) return null;
+  if (type === "power") {
+    const w = parsePowerW(value);
+    return w == null ? null : (ZONE_DEFS.find(z => w <= z.pwMax) || ZONE_DEFS[ZONE_DEFS.length-1]).zone;
+  }
+  if (type === "pace") {
+    const p = parsePaceMin(value);
+    return p == null ? null : (ZONE_DEFS.find(z => p >= z.paceFast) || ZONE_DEFS[ZONE_DEFS.length-1]).zone;
+  }
+  return null;
+}
 
 const DIFF_DOT = ["","#4CC9F0","#90E0EF","#E8A838","#F4A261","#E63946"];
 const DIFF_LABELS = ["","Leve","Mod","Intenso","Muito","Máx"];
@@ -754,7 +779,7 @@ function PageZones({ plannedWorkouts }) {
     let totalMin = 0;
     for (let n=startN; n<=endN; n++) {
       (byDate[ymdFromDayNum(n)] || []).forEach(wk => {
-        const zone = WORKOUT_KINDS[wk.kind]?.zone;
+        const zone = classifyIntensity(wk.intensityType, wk.intensityValue) || WORKOUT_KINDS[wk.kind]?.zone;
         if (!zone || !wk.durationMin) return;
         zoneMin[zone] += wk.durationMin;
         totalMin += wk.durationMin;
@@ -791,16 +816,20 @@ function PageZones({ plannedWorkouts }) {
           </table>
         </div>
         <div style={{ marginTop:14, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888" }}>
-          <b style={{ color:"#111" }}>Nota:</b> Zonas baseadas em potência (Stryd) como âncora primária.
-          Distribuição real de tempo por zona por treino exige dados de stream do Strava (ainda não sincronizados).
+          <b style={{ color:"#111" }}>Nota:</b> FC e pace vêm das zonas reais do seu perfil Strava (MaxHR ·
+          RacePace da meia maratona). Potência segue o modelo de referência do app — o Strava usa 7 zonas
+          estilo ciclismo (Coggan/FTP) que não mapeiam 1:1 pro modelo de corrida de 5 zonas usado aqui.
+          Distribuição real de tempo por zona por treino já realizado ainda exige dados de stream do Strava
+          (não sincronizados).
         </div>
       </div>
 
       <div className="card">
         <div className="card-label">% de Tempo por Zona · por Semana (planejado)</div>
         <div style={{ fontSize:11, color:"#aaa", marginBottom:14 }}>
-          Estimado a partir dos treinos cadastrados no calendário (Fitness Proj) — cada tipo de treino é
-          mapeado pra uma zona dominante (Easy/Longão → Z2, Threshold/Cruise Int. → Z4, VO₂max/Strides/R-pace → Z5).
+          Estimado a partir dos treinos cadastrados no calendário (Fitness Proj): se o treino tem intensidade
+          (pace ou potência) preenchida, a zona é calculada com as faixas reais acima; senão, cai na zona
+          dominante do tipo de treino (Easy/Longão → Z2, Threshold/Cruise Int. → Z4, VO₂max/Strides/R-pace → Z5).
           Não é medição real, é aproximação pelo plano.
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
