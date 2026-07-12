@@ -87,51 +87,6 @@
     margin: 0 0 4px;
   }
 
-  .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .sync-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .sync-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--accent); color: #ffffff; border: none;
-    padding: 9px 15px; border-radius: 8px;
-     font-size: 12px; font-weight: 600;
-    cursor: pointer; white-space: nowrap;
-  }
-  .sync-btn:hover { filter: brightness(1.08); }
-  .last-sync {  font-size: 10.5px; color: var(--muted); }
-
-  .sync-modal-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(5,6,8,0.72);
-    align-items: center; justify-content: center; z-index: 110; padding: 20px;
-  }
-  .sync-modal-overlay.active { display: flex; }
-  .sync-modal {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    max-width: 440px; width: 100%; padding: 24px;
-  }
-  .sync-modal h3 { margin: 0 0 10px;  font-size: 18px; text-transform: uppercase; font-weight: 400; }
-  .sync-modal p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0 0 14px; }
-  .prompt-box {
-    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px 14px;  font-size: 12.5px;
-    margin-bottom: 14px; user-select: all; cursor: text; color: var(--text);
-  }
-  .sync-modal-actions { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
-  .copied-msg { color: var(--z2); font-size: 11.5px; margin-right: auto; opacity: 0; transition: opacity 0.15s;  }
-  .copied-msg.show { opacity: 1; }
-
-  .period-toggle { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
-  .period-toggle button {
-
-    font-size: 12.5px;
-    color: var(--muted);
-    background: transparent;
-    border: none;
-    padding: 7px 14px;
-    border-radius: 7px;
-    cursor: pointer;
-  }
-  .period-toggle button.active { background: var(--accent); color: #ffffff; font-weight: 600; }
-
   /* ---- Training Log ---- */
   .tl-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
   .tl-legend { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -455,18 +410,6 @@
       <div class="eyebrow">Registro de treino</div>
       <h1>Dashboard — Corrida</h1>
     </div>
-    <div class="header-right">
-      <div class="period-toggle">
-        <button class="active">7D</button>
-        <button>30D</button>
-        <button>90D</button>
-        <button>180D</button>
-      </div>
-      <div class="sync-wrap">
-        <button class="sync-btn" id="syncBtn">⟳ Sync com Garmin</button>
-        <div class="last-sync">Última sync: 12/07 07:15 · via Claude</div>
-      </div>
-    </div>
   </header>
 
   <div class="tab-nav">
@@ -699,21 +642,6 @@
       <div id="tlCalendar"></div>
     </div>
   </div><!-- /tab-trainingLog -->
-
-  <!-- Modal de sync -->
-  <div id="syncModalOverlay" class="sync-modal-overlay">
-    <div class="sync-modal">
-      <h3>Sync com Garmin</h3>
-      <p>Cole essa mensagem numa conversa com o Claude pra puxar suas atividades mais recentes do Garmin, recalcular rTSS, zonas e previsões, e atualizar este dashboard.</p>
-      <div class="prompt-box" id="syncPromptBox">Atualize meu dashboard de treino com minhas atividades mais recentes do Garmin.</div>
-      <p style="margin-bottom:6px;">Se preferir, peça pro Claude configurar uma sincronização automática (GitHub Actions já deixamos pronto pra isso).</p>
-      <div class="sync-modal-actions">
-        <span class="copied-msg" id="syncCopiedMsg">Copiado ✓</span>
-        <button class="tl-btn" id="syncCloseBtn">Fechar</button>
-        <button class="tl-btn tl-btn-primary" id="syncCopyBtn">Copiar mensagem</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Modal de edição de treino -->
   <div id="tlModalOverlay" class="tl-modal-overlay">
@@ -950,26 +878,6 @@ document.querySelectorAll('#activityTable th[data-key]').forEach(th => {
   });
 });
 document.getElementById('activitySearch').addEventListener('input', renderActivities);
-
-// --- modal de sync ---
-const syncOverlay = document.getElementById('syncModalOverlay');
-document.getElementById('syncBtn').addEventListener('click', () => syncOverlay.classList.add('active'));
-document.getElementById('syncCloseBtn').addEventListener('click', () => syncOverlay.classList.remove('active'));
-syncOverlay.addEventListener('click', (e) => { if (e.target === syncOverlay) syncOverlay.classList.remove('active'); });
-document.getElementById('syncCopyBtn').addEventListener('click', () => {
-  const text = document.getElementById('syncPromptBox').textContent;
-  const msg = document.getElementById('syncCopiedMsg');
-  const done = () => { msg.classList.add('show'); setTimeout(() => msg.classList.remove('show'), 1600); };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(done).catch(() => {
-      const r = document.createRange(); r.selectNode(document.getElementById('syncPromptBox'));
-      window.getSelection().removeAllRanges(); window.getSelection().addRange(r); done();
-    });
-  } else {
-    const r = document.createRange(); r.selectNode(document.getElementById('syncPromptBox'));
-    window.getSelection().removeAllRanges(); window.getSelection().addRange(r); done();
-  }
-});
 
 // --- troca de abas ---
 document.querySelectorAll('.tab-btn').forEach(btn => {
