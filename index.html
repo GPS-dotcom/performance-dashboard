@@ -36,6 +36,16 @@
   .race-days { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
   .race-days b { color: var(--text-primary); }
 
+  .sync-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .sync-btn {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff;
+    border: none; padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  .sync-btn:hover { filter: brightness(1.08); }
+  .sync-btn:disabled { opacity: 0.6; cursor: default; }
+  .last-sync { font-size: 11px; color: var(--text-muted); text-align: right; }
+
   .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 22px; overflow-x: auto; }
   .tab-btn {
     font-size: 12.5px; color: var(--text-muted); background: transparent; border: none;
@@ -1096,28 +1106,47 @@ function App() {
   const [plannedWorkouts, setPlannedWorkouts] = useState(() => {
     try { return JSON.parse(localStorage.getItem(PLANNED_KEY)) || []; } catch { return []; }
   });
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const [lastSynced, setLastSynced] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(PLANNED_KEY, JSON.stringify(plannedWorkouts));
   }, [plannedWorkouts]);
 
+  async function loadData() {
+    const { data: acts, error: e1 } = await sb.from("strava_activities").select("*").order("start_date", { ascending: false }).limit(30);
+    if (e1) throw e1;
+    const { data: pmcData, error: e2 } = await sb.from("daily_pmc").select("*").order("date", { ascending: true });
+    if (e2) throw e2;
+    setActivities(acts || []);
+    setPmc(pmcData || []);
+  }
+
   useEffect(() => {
-    async function load() {
-      try {
-        const { data: acts, error: e1 } = await sb.from("strava_activities").select("*").order("start_date", { ascending: false }).limit(30);
-        if (e1) throw e1;
-        const { data: pmcData, error: e2 } = await sb.from("daily_pmc").select("*").order("date", { ascending: true });
-        if (e2) throw e2;
-        setActivities(acts || []);
-        setPmc(pmcData || []);
-      } catch (err) {
-        setError(String(err.message || err));
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    loadData().catch(err => setError(String(err.message || err))).finally(() => setLoading(false));
   }, []);
+
+  // Dispara a Edge Function (clever-api/sync-strava) que puxa as atividades novas
+  // do Strava e recalcula PMC/zonas, depois recarrega os dados do Supabase.
+  async function handleSync() {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/clever-api`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
+      });
+      const result = await res.json();
+      if (!res.ok || result.ok === false) throw new Error(result.error || `HTTP ${res.status}`);
+      await loadData();
+      setLastSynced(new Date());
+    } catch (err) {
+      setSyncError(String(err.message || err));
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const daysOut = Math.ceil((RACE_DATE - new Date()) / 86400000);
   const latestPmc = pmc.length > 0 ? pmc[pmc.length - 1] : { ctl:0, atl:0, tsb:0 };
@@ -1144,6 +1173,16 @@ function App() {
           <div className="eyebrow">GPS → Chicago Marathon · 11 de outubro</div>
           <h1>Performance Dashboard</h1>
           <div className="race-days"><b>{daysOut}</b> dias · <b>{Math.ceil(daysOut/7)}</b> semanas para o race day</div>
+        </div>
+        <div className="sync-wrap">
+          <button className="sync-btn" onClick={handleSync} disabled={syncing}>
+            {syncing ? "Sincronizando…" : "⟳ Atualizar treinos"}
+          </button>
+          {syncError ? (
+            <div className="last-sync" style={{ color:"#e34948" }}>Erro ao sincronizar: {syncError}</div>
+          ) : lastSynced ? (
+            <div className="last-sync">Sincronizado às {lastSynced.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })}</div>
+          ) : null}
         </div>
       </header>
 
