@@ -8,68 +8,49 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --page: #f9f9f7; --surface-card: #ffffff;
+    --page: #f9f9f7; --surface-card: #ffffff; --surface-alt: #ffffff;
     --text-primary: #0b0b0b; --text-secondary: #5c5b57; --text-muted: #93918a;
-    --border: rgba(11,11,11,0.10); --divider: rgba(11,11,11,0.06);
-    --accent: #E8FF00; --highlight-bg: #FFFFF5;
+    --border: rgba(11,11,11,0.10); --divider: rgba(11,11,11,0.06); --baseline: #c3c2b7;
+    --accent: #2a78d6; --accent-soft: #c9d9f0; --highlight-bg: #eef4fc;
+    --z1: #2a78d6; --z2: #1baf7a; --z3: #eda100; --z4: #eb6834; --z5: #e34948;
+    --good: #0ca30c; --warning: #c98500;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 16px; }
-  body { background: var(--page); font-family: 'Inter', system-ui, sans-serif; color: var(--text-primary); min-height: 100vh; }
+  body { background: var(--page); font-family: 'Inter', system-ui, sans-serif; color: var(--text-primary); min-height: 100vh; font-variant-numeric: proportional-nums; }
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   button { font-family: inherit; cursor: pointer; }
 
-  .app-shell { display: flex; min-height: 100vh; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
 
-  .sidebar {
-    width: 220px; flex-shrink: 0;
-    background: #111; color: #fff;
-    display: flex; flex-direction: column;
-    position: fixed; top: 0; left: 0; height: 100vh;
-    z-index: 100; padding: 0;
+  header.top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.14em; color: var(--text-muted); text-transform: uppercase; }
+  h1 { font-weight: 700; font-size: 26px; letter-spacing: -0.01em; margin: 4px 0 0; }
+  .race-days { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .race-days b { color: var(--text-primary); }
+
+  .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 22px; overflow-x: auto; }
+  .tab-btn {
+    font-size: 12.5px; color: var(--text-muted); background: transparent; border: none;
+    padding: 10px 4px; margin-right: 22px; cursor: pointer; position: relative; top: 1px;
+    border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 500;
   }
-  .sidebar-logo { padding: 28px 24px 20px; border-bottom: 1px solid #222; }
-  .sidebar-logo .race-target {
-    font-family: 'Inter', system-ui, sans-serif; font-size: 20px; font-weight: 800;
-    color: #E8FF00; letter-spacing: -0.3px; line-height: 1.15;
-  }
-  .sidebar-logo .race-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.12em; margin-top: 4px; }
-  .sidebar-logo .race-days { margin-top: 10px; font-size: 11px; color: #999; }
-  .sidebar-logo .race-days span { color: #fff; font-weight: 600; }
-  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 24px; font-size: 13px; font-weight: 500;
-    color: #888; border: none; background: transparent;
-    width: 100%; text-align: left; border-left: 3px solid transparent;
-    transition: all 0.15s;
-  }
-  .nav-item:hover { color: #fff; background: #1a1a1a; }
-  .nav-item.active { color: #fff; border-left-color: #E8FF00; background: #1a1a1a; }
-  .nav-item .nav-icon { font-size: 14px; width: 18px; text-align: center; }
-  .sidebar-footer { padding: 16px 24px; border-top: 1px solid #222; }
-  .sidebar-footer p { font-size: 10px; color: #555; line-height: 1.5; }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
 
-  .main-content { margin-left: 220px; flex: 1; min-height: 100vh; background: var(--page); }
-
-  .mobile-header { display: none; background: #111; color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 90; align-items: center; gap: 12px; }
-  .mobile-header .logo { font-family: 'DM Mono', monospace; font-size: 18px; color: #E8FF00; font-weight: 500; }
-  .mobile-tabs { display: none; overflow-x: auto; background: var(--surface-card); border-bottom: 1px solid var(--border); position: sticky; top: 53px; z-index: 89; gap: 0; }
-  .mobile-tab { flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); border: none; background: transparent; border-bottom: 2px solid transparent; white-space: nowrap; }
-  .mobile-tab.active { color: var(--text-primary); border-bottom-color: #E8FF00; }
-
-  .page { padding: 32px; max-width: 1200px; }
+  .page { padding: 0; max-width: 1180px; }
   .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
   .page-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
 
-  .card { background: var(--surface-card); border-radius: 16px; border: 1px solid var(--border); padding: 20px; }
-  .card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .card { background: var(--surface-card); border-radius: 12px; border: 1px solid var(--border); padding: 18px 20px; }
+  .card-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 14px; }
   .card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -77,57 +58,85 @@
   .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
   .gap-14 { display: flex; flex-direction: column; gap: 14px; }
 
-  .stat-hero { font-family: 'DM Mono', monospace; font-size: 36px; font-weight: 500; letter-spacing: -1px; line-height: 1; }
-  .stat-hero.lg { font-size: 52px; }
-  .stat-hero.sm { font-size: 24px; }
-  .stat-unit { font-size: 13px; color: var(--text-secondary); font-family: 'Inter', sans-serif; font-weight: 400; }
-
-  .z1 { color: #94D82D; } .bg-z1 { background: #94D82D22; border-color: #94D82D44; }
-  .z2 { color: #4DABF7; } .bg-z2 { background: #4DABF722; border-color: #4DABF744; }
-  .z3 { color: #FCC419; } .bg-z3 { background: #FCC41922; border-color: #FCC41944; }
-  .z4 { color: #FF922B; } .bg-z4 { background: #FF922B22; border-color: #FF922B44; }
-  .z5 { color: #FF3333; } .bg-z5 { background: #FF333322; border-color: #FF333344; }
-
-  .phase-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-
-  .lap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .lap-table th { padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--divider); }
+  .lap-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .lap-table th {
+    padding: 8px 10px; text-align: left; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .lap-table th:hover { color: var(--text-primary); }
+  .lap-table th.sorted::after { content: " " attr(data-dir); color: var(--accent); }
   .lap-table td { padding: 9px 10px; border-bottom: 1px solid var(--divider); color: var(--text-secondary); }
   .lap-table tr:last-child td { border-bottom: none; }
   .lap-table tr:hover td { background: var(--divider); }
 
   .zone-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 1px; }
   .zone-bar-seg { height: 100%; border-radius: 2px; }
+  .zone-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .zone-legend span { font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
-  .prog-bar { background: var(--divider); border-radius: 4px; height: 6px; overflow: hidden; }
-  .prog-bar-fill { height: 100%; border-radius: 4px; }
+  .zone-badge { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: #ffffff; padding: 4px 9px; border-radius: 6px; }
 
-  .week-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; border-left: 4px solid var(--border); }
-  .week-card.current { border-left-color: #E8FF00; background: var(--highlight-bg); }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi { background: var(--surface-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .kpi .label { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .kpi .value { font-size: 26px; font-weight: 700; margin-top: 8px; letter-spacing: -0.01em; font-family: 'DM Mono', monospace; }
+  .kpi .value .unit { font-size: 14px; color: var(--text-muted); font-weight: 400; margin-left: 4px; font-family: 'Inter', sans-serif; }
+  .kpi .delta { font-size: 12px; margin-top: 4px; }
+  .kpi .delta.up { color: var(--z2); }
+  .kpi .delta.down { color: var(--z5); }
 
-  .scenario-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
-  .scenario-card.goal { border-color: #E8FF00; background: linear-gradient(135deg, var(--highlight-bg), var(--surface-card)); }
+  .lw-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .lw-stats > div { display: flex; flex-direction: column; }
+  .lw-val { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; font-family: 'DM Mono', monospace; }
+  .lw-val .lw-unit { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 2px; font-family: 'Inter', sans-serif; }
+  .lw-label { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
 
-  .type-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+  .analysis-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 8px; }
+  .analysis p { font-size: 13.5px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 10px; }
+  .analysis p:last-child { margin-bottom: 0; }
+  .analysis strong { color: var(--text-primary); font-weight: 600; }
+  .analysis-note { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--text-muted); }
+
+  .search-row { margin-bottom: 12px; }
+  .search-row input[type=text] { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--text-primary); font-size: 13px; }
+  .table-scroll { overflow-x: auto; }
+
+  .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .hint { font-size: 10.5px; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+  .footnote { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+  .footer-note { font-size: 11.5px; color: var(--text-muted); margin-top: 20px; text-align: center; }
+
+  /* ---- Training Log ---- */
+  .tl-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .tl-legend span { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .tl-cal-header { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 8px; font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 2px 8px; }
+  .tl-week-row { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 8px; margin-bottom: 8px; }
+  .tl-day { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 9px; padding: 8px; min-height: 78px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; transition: border-color 0.12s; }
+  .tl-day:hover { border-color: var(--baseline); }
+  .tl-day.current { border-color: var(--accent); }
+  .tl-day-date { font-size: 10px; color: var(--text-muted); }
+  .tl-day-tag { align-self: flex-start; font-size: 9.5px; font-weight: 600; padding: 2px 6px; border-radius: 4px; color: #ffffff; }
+  .tl-week-summary { background: var(--surface-card); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+  .tl-week-summary .k { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+  .tl-week-summary .v { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; font-family: 'DM Mono', monospace; }
 
   @media (max-width: 900px) {
-    .sidebar { display: none; }
-    .main-content { margin-left: 0; }
-    .mobile-header { display: flex; }
-    .mobile-tabs { display: flex; }
-    .page { padding: 16px; }
+    .kpi-row { grid-template-columns: repeat(2,1fr); }
     .grid-4 { grid-template-columns: repeat(2,1fr); }
     .grid-3 { grid-template-columns: 1fr 1fr; }
-    .hide-mobile { display: none !important; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .ref-grid { grid-template-columns: 1fr; }
+    .lw-stats { grid-template-columns: repeat(3,1fr); }
+  }
+  @media (max-width: 720px) {
+    .tl-cal-header { display: none; }
+    .tl-week-row { grid-template-columns: repeat(7, 1fr); }
+    .tl-week-summary { grid-column: 1 / -1; flex-direction: row; justify-content: space-around; }
   }
   @media (max-width: 520px) {
-    .grid-2 { grid-template-columns: 1fr; }
     .grid-3 { grid-template-columns: 1fr 1fr; }
-  }
-
-  .recharts-tooltip-wrapper .recharts-default-tooltip {
-    background: #111 !important; border: none !important;
-    border-radius: 8px !important; font-size: 12px !important;
+    .kpi-row { grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
@@ -143,7 +152,7 @@
 </script>
 
 <script type="text/babel">
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 const { createClient } = supabase;
 
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
@@ -160,35 +169,19 @@ const VDOT = 58; const FTP = 393;
 // o Strava usa 7 zonas estilo Coggan (ciclismo), que não mapeiam 1:1 pro modelo de
 // corrida de 5 zonas usado aqui.
 const ZONE_DEFS = [
-  { zone:"Z1", label:"Recovery",  pw:"< 315W",    pwMax:315,          hr:"< 128bpm",  hrMax:127,          pace:"> 5:14/km",  paceFast:5.235, color:"#94D82D", pct:80  },
-  { zone:"Z2", label:"Aeróbio",   pw:"315–353W",  pwMax:353,          hr:"128–159",   hrMax:159,          pace:"4:30–5:14",  paceFast:4.506, color:"#4DABF7", pct:100 },
-  { zone:"Z3", label:"Tempo",     pw:"354–383W",  pwMax:383,          hr:"160–174",   hrMax:174,          pace:"4:03–4:30",  paceFast:4.046, color:"#FCC419", pct:90  },
-  { zone:"Z4", label:"Threshold", pw:"384–412W",  pwMax:412,          hr:"175–190",   hrMax:190,          pace:"3:47–4:03",  paceFast:3.788, color:"#FF922B", pct:105 },
-  { zone:"Z5", label:"VO₂max",    pw:"> 413W",    pwMax:Infinity,     hr:"> 190bpm",  hrMax:Infinity,     pace:"< 3:47/km",  paceFast:0,     color:"#FF3333", pct:120 },
+  { zone:"Z1", label:"Recovery",  pw:"< 315W",    pwMax:315,          hr:"< 128bpm",  hrMax:127,          pace:"> 5:14/km",  paceFast:5.235, color:"#2a78d6", pct:80  },
+  { zone:"Z2", label:"Aeróbio",   pw:"315–353W",  pwMax:353,          hr:"128–159",   hrMax:159,          pace:"4:30–5:14",  paceFast:4.506, color:"#1baf7a", pct:100 },
+  { zone:"Z3", label:"Tempo",     pw:"354–383W",  pwMax:383,          hr:"160–174",   hrMax:174,          pace:"4:03–4:30",  paceFast:4.046, color:"#eda100", pct:90  },
+  { zone:"Z4", label:"Threshold", pw:"384–412W",  pwMax:412,          hr:"175–190",   hrMax:190,          pace:"3:47–4:03",  paceFast:3.788, color:"#eb6834", pct:105 },
+  { zone:"Z5", label:"VO₂max",    pw:"> 413W",    pwMax:Infinity,     hr:"> 190bpm",  hrMax:Infinity,     pace:"< 3:47/km",  paceFast:0,     color:"#e34948", pct:120 },
 ];
 
 function parsePaceMin(str) {
   const m = String(str).match(/(\d+):(\d{1,2})/);
   return m ? parseInt(m[1],10) + parseInt(m[2],10)/60 : null;
 }
-function parsePowerW(str) {
-  const m = String(str).match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]) : null;
-}
 function findZone(predicate) {
   return (ZONE_DEFS.find(predicate) || ZONE_DEFS[ZONE_DEFS.length-1]).zone;
-}
-function classifyIntensity(type, value) {
-  if (!value) return null;
-  if (type === "power") {
-    const w = parsePowerW(value);
-    return w == null ? null : findZone(z => w <= z.pwMax);
-  }
-  if (type === "pace") {
-    const p = parsePaceMin(value);
-    return p == null ? null : findZone(z => p >= z.paceFast);
-  }
-  return null;
 }
 function classifyActivityZone(a) {
   const watts = a.weighted_average_watts || a.average_watts;
@@ -210,132 +203,6 @@ function activityZoneMinutes(a) {
   if (zone) out[zone] = (a.moving_time_s||0)/60;
   return out;
 }
-
-const DIFF_DOT = ["","#4CC9F0","#90E0EF","#E8A838","#F4A261","#E63946"];
-const DIFF_LABELS = ["","Leve","Mod","Intenso","Muito","Máx"];
-
-const LIBRARY = {
-  T: {
-    label:"Threshold", color:"#E8A838", zone:"Z3",
-    desc:"Pace: 3:55–4:05/km · FC: 173–179bpm · Pot: 380–400W",
-    items:[
-      { tag:"T-1", name:"Tempo Contínuo 25–30min", diff:3, when:"Semanas 1–4",
-        steps:["15min Z1 aquecimento","25–30min @ 3:55–4:05/km contínuo","10min Z1 + 4 strides"],
-        focus:"Acúmulo máximo no LT2", tip:"Se HR drift >10bpm, reduza 5seg/km" },
-      { tag:"T-2", name:"Split Tempo 2×15min", diff:3, when:"Semanas alternadas",
-        steps:["12min Z1","15min @ 3:55/km","5min trote Z1","15min @ 3:52/km (negativo)","8min Z1"],
-        focus:"Mais volume total no limiar com qualidade por bloco", tip:"Bloco 2 deve ser 3–5seg/km mais rápido" },
-      { tag:"T-3", name:"Tempo Progressivo M→LT2→HM", diff:4, when:"Semanas 5–8",
-        steps:["10min @ 4:00/km","10min @ 3:58/km","10min @ 3:55/km","5min @ 3:45/km","10min Z1"],
-        focus:"Simula transição metabólica da maratona", tip:"Excelente em semanas de carga alta" },
-      { tag:"T-4", name:"Hill Tempo 20min", diff:4, when:"A cada 3–4 semanas",
-        steps:["12min Z1 plano","20min @ percepção LT2 em subida 1–3%","10min trote descida"],
-        focus:"Força específica + LT2; use watt, não pace", tip:"Manter 393W = esforço correto em subida" },
-      { tag:"T-5", name:"Fartlek 6×5min", diff:3, when:"Semana de variação/calor",
-        steps:["10min Z1","6× (5min @ LT2 / 2min trote Z1)","8min Z1"],
-        focus:"30min totais no limiar com qualidade técnica por rep", tip:"Recovery de 2min ainda é fisiologicamente ativo" },
-      { tag:"T-6", name:"Finishing Kick", diff:5, when:"Semanas 10–12, 1×/mês",
-        steps:["12min Z1","20min @ 4:00/km","5min @ 3:55/km","5min @ 3:40/km (burst)","8min Z1"],
-        focus:"Tolerância ao lactato + simulação km 40–42", tip:"Burst não precisa ser sustentável — é tolerância" },
-    ]
-  },
-  CI: {
-    label:"Cruise Int.", color:"#F4A261", zone:"Z3",
-    desc:"Pace: 3:55–4:05/km · Rec: 90s trote · FC rec: ~165bpm",
-    items:[
-      { tag:"CI-1", name:"Clássico 3×2km", diff:3, when:"Toda segunda, Sem 1–4",
-        steps:["15min Z1 + 4 strides","3× 2km @ 3:55–4:00/km","Rec 90s trote","12min Z1"],
-        focus:"6km totais no LT2 com qualidade por rep", tip:"Se 3° rep >5seg mais lento, corte 1 rep" },
-      { tag:"CI-2", name:"Volume Alto 5×1.6km", diff:3, when:"Semanas 5–7",
-        steps:["12min Z1","5× 1600m @ 3:58/km","Rec 75s trote","10min Z1"],
-        focus:"8km totais no limiar — sessão de Canova", tip:"Rec de 75s é intencional; não estenda" },
-      { tag:"CI-3", name:"Ladder 1–2–3km", diff:4, when:"Semana 5–6",
-        steps:["12min Z1","1km @ 3:50/km | Rec 90s","2km @ 3:55/km | Rec 2min","3km @ 4:00/km | Rec 3min","10min Z1"],
-        focus:"6km totais com especificidade crescente", tip:"RPE uniforme (~7.5) em todos os reps" },
-      { tag:"CI-4", name:"Ladder 3–2–1km", diff:4, when:"Carga moderada",
-        steps:["12min Z1","3km @ 4:02/km | Rec 3min","2km @ 3:58/km | Rec 90s","1km @ 3:52/km | Rec 60s","10min Z1"],
-        focus:"Treina execução negativa; rep curta vira kick sob fadiga", tip:"Psicologicamente mais fácil: treino fica menor" },
-      { tag:"CI-5", name:"M-pace Sandwich", diff:4, when:"Semanas 9–12",
-        steps:["10min Z1","2km @ 4:00/km | Rec 60s","2km @ 3:55/km | Rec 90s","2km @ 3:55/km | Rec 90s","2km @ 4:00/km | Rec 60s","10min Z1"],
-        focus:"Especificidade máxima maratona: M-pace + LT2", tip:"Sessão Canova — M-pace ensina a escalar do limiar" },
-      { tag:"CI-6", name:"Mixed-pace Double Threshold", diff:5, when:"Semanas pico 10–13",
-        steps:["12min Z1","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","1km @ 3:50/km | Rec 60s","1.5km @ 3:58/km | Rec 90s","10min Z1"],
-        focus:"Alternância de zonas treina clearance dinâmico de lactato", tip:"Só usar em semanas de alta forma" },
-    ]
-  },
-  I: {
-    label:"VO₂max", color:"#E63946", zone:"Z4–Z5",
-    desc:"Pace: 3:25–3:35/km · FC >178bpm no final · Rec HRR ≤150bpm",
-    items:[
-      { tag:"I-1", name:"10–12×400m Clássico", diff:4, when:"Qua, Semanas 1–4",
-        steps:["15min Z1 + 4 strides","10–12× 400m @ 3:20–3:25/km","Rec HRR ≤150bpm (~90s)","12min Z1"],
-        focus:"Volume máximo em VO₂max — sessão calibrada no Ibirapuera", tip:"Estímulo acumula nas reps 7–12. Não acelere no começo" },
-      { tag:"I-2", name:"5×1000m", diff:4, when:"Semanas 4–7",
-        steps:["15min Z1","5× 1000m @ 3:28–3:32/km","Rec 2:30–3min trote","12min Z1"],
-        focus:"Reps de ~2:50min — ótimo para biogênese mitocondrial", tip:"Splits de 400m devem ser quase iguais dentro de cada rep" },
-      { tag:"I-3", name:"Ladder VO₂ 1200–400m", diff:5, when:"Semanas 6–8",
-        steps:["15min Z1","1200m @ 3:32/km | Rec 3min","1000m @ 3:30/km | Rec 2:30","800m @ 3:27/km | Rec 2min","600m @ 3:25/km | Rec 90s","2×400m @ 3:22/km | Rec 75s","12min Z1"],
-        focus:"Escalada de intensidade; recruta progressivamente fibras IIa", tip:"~5km totais de qualidade. Psicologicamente poderoso" },
-      { tag:"I-4", name:"6×800m", diff:4, when:"Quando pista disponível",
-        steps:["15min Z1 + 3 strides","6× 800m @ 3:26–3:30/km","Rec 2min trote","12min Z1"],
-        focus:"~2:48 por rep = máximo tempo em vVO₂max por rep", tip:"Se 2° 400m de cada rep for >3seg mais lento, reduza pace" },
-      { tag:"I-5", name:"Daniels Step Fartlek", diff:3, when:"Descarga ou trilha",
-        steps:["10min Z1 + strides","10H/10J → 20H/20J → ... → 90H/90J (passos)","8min Z1"],
-        focus:"~20min de VO₂max sem pressão de pace", tip:"H = passo forte por sensação de I-pace. J = trote leve" },
-      { tag:"I-6", name:"VO₂ Descanso Decrescente", diff:5, when:"Semana pico, 1× no ciclo",
-        steps:["15min Z1 + 4 strides","2× 1000m @ 3:30 | Rec 3min","2× 800m @ 3:27 | Rec 2min","2× 600m @ 3:25 | Rec 90s","2× 400m @ 3:22 | Rec 60s","12min Z1"],
-        focus:"Velocidade crescente + recuperação reduzida = tolerância ao lactato", tip:"Exige 2 dias Z1 depois. Só na forma máxima" },
-    ]
-  },
-  St: {
-    label:"Strides", color:"#06D6A0", zone:"Z5 breve",
-    desc:"80–100m a 85–90% esforço · 20–30seg · Rec: 60–90s caminhada · 4–8 reps",
-    items:[
-      { tag:"St-1", name:"Strides Clássicos Pós-Easy", diff:1, when:"2× semana",
-        steps:["Após easy run","6× 80–100m aceleração gradual → pico 85%","Rec 60–90s caminhada"],
-        focus:"Manter cadência 180–182spm e GCT <230ms", tip:"A aceleração nos primeiros 20m é o drill, não o trecho rápido" },
-      { tag:"St-2", name:"Hill Strides", diff:2, when:"1× semana",
-        steps:["Após easy run","6× 60–80m subida 4–5% @ 85% esforço","Trote suave de volta + 60s repouso"],
-        focus:"Força reativa → reduz GCT via adaptação SSC", tip:"Rigidez tendínea Aquiles → impacto direto no GCT plano" },
-      { tag:"St-3", name:"Pre-workout Primer", diff:1, when:"Antes de toda sessão de qualidade",
-        steps:["Após aquecimento Z1","3–4× 80m: aceleração 70%→80%→85%→90%","60s caminhada entre reps"],
-        focus:"Ativa fibras rápidas antes do treino principal", tip:"Nunca pule antes de sessões I-pace" },
-      { tag:"St-4", name:"Metronome Strides", diff:2, when:"1× semana, progressão ao longo do Build",
-        steps:["Metronome app em 182spm","6× 100m sincronizando passada a 85%","90s caminhada entre reps"],
-        focus:"Elevar cadência de 177 → 182spm sem alargar passada", tip:"Adaptação de cadência leva 6–8 semanas. Comece já" },
-      { tag:"St-5", name:"Post-Threshold Strides", diff:2, when:"Após T-1, T-2, CI-1",
-        steps:["Imediatamente após sessão T ou CI","4× 80–100m @ 85–88%","90s caminhada entre reps"],
-        focus:"Duplo estímulo neuromuscular + LT2 na mesma sessão", tip:"Melhor timing: temperatura corporal já elevada" },
-      { tag:"St-6", name:"Buildup Strides (Suave)", diff:1, when:"Descarga, após longão",
-        steps:["Após easy run","4× 120m: 60%→70%→80%→85% graduais","90s caminhada"],
-        focus:"Versão mais suave; ideal para dias de fadiga", tip:"Tensão na panturrilha ou Aquiles = parar" },
-    ]
-  },
-  R: {
-    label:"R-pace", color:"#9B5DE5", zone:"Z5+",
-    desc:"Pace: 3:00–3:10/km · Rec: FC retorna a 120–125bpm · Max por rep: <90seg",
-    items:[
-      { tag:"R-1", name:"8×200m Clássico", diff:3, when:"Início do Build / descarga",
-        steps:["15min Z1 + strides","8× 200m @ 3:00–3:10/km","Rec 200m trote lento (FC → 120bpm)","10min Z1"],
-        focus:"Economia de corrida pura — qualidade mecânica, não esforço", tip:"Se parecer fácil — ótimo. Não acelere" },
-      { tag:"R-2", name:"4–6×400m", diff:3, when:"Semanas 3–6",
-        steps:["15min Z1 + 4 strides","4–6× 400m @ 3:02–3:08/km","Rec 400m trote + 30s pausa","10min Z1"],
-        focus:"Rep mais longa em R-pace (~80seg) — limite Daniels", tip:"VDOT 58 permite até 400m em R-pace" },
-      { tag:"R-3", name:"Pirâmide 200–400–200m", diff:4, when:"Semanas 4–8",
-        steps:["15min Z1 + strides","200m → 300m → 400m → 300m → 200m @ R-pace","Rec = distância percorrida em trote","10min Z1"],
-        focus:"Variação de distância treina SSC de formas diferentes", tip:"1400m totais em R-pace com qualidade uniforme" },
-      { tag:"R-4", name:"Ciclos 200–200–400m", diff:3, when:"Semanas 5–8",
-        steps:["15min Z1","4× ciclos: 200m R + Rec 200m → 200m R + Rec 200m → 400m R + Rec 400m","10min Z1"],
-        focus:"3.2km totais em R-pace com boa recuperação entre ciclos", tip:"O 400m após dois 200m testa manutenção da economia" },
-      { tag:"R-5", name:"Hill R-pace 8–10×100m", diff:4, when:"1× a cada 2 semanas",
-        steps:["15min Z1 + strides planos","8–10× 100–120m em subida 5–8% @ esforço R-pace","Caminhada de volta completa (60–90s)","10min Z1 plano"],
-        focus:"Força reativa máxima + economia em um estímulo", tip:"Excelente para reduzir GCT de 254ms → <230ms" },
-      { tag:"R-6", name:"Fast Reps (acima de R-pace)", diff:5, when:"Pré-competitivo Sem 13–15",
-        steps:["15min Z1 + strides","6–8× 100–150m @ 2:54–2:57/km","Rec total — FC retorna a 115bpm","10min Z1"],
-        focus:"Velocidade pura e potência anaeróbica alática; stiffness Aquiles", tip:"Max: 2% volume semanal (~8×100m). Não exceder nunca" },
-    ]
-  },
-};
 
 const PLANNED_KEY = "gps_planned_workouts_v1";
 
@@ -459,44 +326,22 @@ const WEEKS = [
   { n:15, phase:"Race",      dates:"Out 4–11",     vol:22,  quality:["Strides","Easy shakeout"],              long:0,  status:"future"  },
 ];
 
-const PHASE_COLORS = { Transição:"#999", Build:"#4DABF7", Down:"#FCC419", Block:"#FF922B", Taper:"#9775FA", Race:"#E8FF00" };
-
-const SCENARIOS = [
-  { key:"ruim",  label:"Cenário Ruim",     time:"2:55:00", pace:"4:09/km", color:"#FF3333", desc:"Calor, nutrição falha ou lesão menor." },
-  { key:"base",  label:"Base Riegel",      time:"2:52:30", pace:"4:05/km", color:"#4DABF7", desc:"Extrapolação direta da Meia RJ 1:28:17." },
-  { key:"meta",  label:"Meta Oficial",     time:"2:48:00", pace:"4:00/km", color:"#E8FF00", desc:"LT2 → 3:52/km. Decoupling <7%. TSB +20.", goal:true },
-  { key:"bom",   label:"Cenário Bom",      time:"2:45:00", pace:"3:55/km", color:"#94D82D", desc:"LT2 → 3:50/km. Negative split perfeito." },
-  { key:"excel", label:"Cenário Excelente",time:"2:42:00", pace:"3:51/km", color:"#9775FA", desc:"LT2 → 3:46/km. Todas as variáveis alinhadas." },
-];
-
-const PACE_STRATEGY = [
-  { km:"0–5",   pace:"4:02", pw:"380–390W", note:"Saída controlada" },
-  { km:"5–10",  pace:"4:01", pw:"383–393W", note:"Settle in" },
-  { km:"10–15", pace:"4:01", pw:"385–395W", note:"Ritmo cruzeiro" },
-  { km:"15–20", pace:"4:00", pw:"388–398W", note:"Halfway push" },
-  { km:"20–25", pace:"4:00", pw:"390–400W", note:"Gel + cafeína" },
-  { km:"25–30", pace:"3:59", pw:"390–403W", note:"Comprometer" },
-  { km:"30–35", pace:"3:58", pw:"393–405W", note:"Cafeína 200mg" },
-  { km:"35–40", pace:"3:57", pw:"395–410W", note:"All in" },
-  { km:"40–42", pace:"3:55", pw:"400–420W", note:"Sprint 🔥" },
-];
-
-const NUTRITION = [
-  { time:"-3h",    icon:"🍌", action:"Café da manhã",    detail:"Aveia + banana · 150g CHO" },
-  { time:"-45min", icon:"🟡", action:"Gel pré-race",     detail:"25g CHO + 300ml água" },
-  { time:"km 8",   icon:"🟡", action:"1º Gel",           detail:"30g CHO" },
-  { time:"km 16",  icon:"🟡", action:"2º Gel",           detail:"30g CHO + isotônico" },
-  { time:"km 24",  icon:"☕", action:"3º Gel + cafeína", detail:"30g CHO + 200mg cafeína" },
-  { time:"km 30",  icon:"🟠", action:"4º Gel duplo",     detail:"60g CHO + sódio" },
-  { time:"km 36",  icon:"☕", action:"5º Gel + cafeína", detail:"30g CHO + 100mg cafeína" },
-  { time:"Meta",   icon:"🥤", action:"Recuperação",      detail:"Isotônico + proteína 30g" },
-];
+// ─── PREDICTIONS (estimativa própria via Riegel, não vem do Garmin) ──────────
+// Âncora real: Meia Maratona RJ 1:28:17 (PR do atleta). Riegel extrapola pra
+// outras distâncias: T2 = T1 * (D2/D1)^1.06. VDOT e LT2 seguem sendo as
+// referências manuais já usadas no resto do app (não há conector Garmin).
+const ANCHOR_KM = 21.0975, ANCHOR_SEC = 1*3600 + 28*60 + 17;
+function riegelPredictSec(targetKm) {
+  return ANCHOR_SEC * Math.pow(targetKm / ANCHOR_KM, 1.06);
+}
+const RACE_PREDICTIONS = [
+  { label:"5K",       km:5       },
+  { label:"10K",      km:10      },
+  { label:"Meia",     km:ANCHOR_KM, isAnchor:true },
+  { label:"Maratona", km:42.195  },
+].map(p => ({ ...p, sec: p.isAnchor ? ANCHOR_SEC : riegelPredictSec(p.km) }));
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-const TT = {
-  contentStyle:{ background:"#111", border:"none", borderRadius:8, color:"#fff", fontSize:11, padding:"8px 12px" },
-  labelStyle:{ color:"#aaa" }, cursor:"rgba(0,0,0,0.05)"
-};
 
 function fmtDuration(sec) {
   if (!sec) return "–";
@@ -599,40 +444,29 @@ function MiniLineChart({ data, lines, height=200, refLines=[] }) {
   );
 }
 
-function MiniBarChart({ data, valueKey, colorFor, height=140, refLines=[] }) {
-  const width = 700;
-  const padding = { top:10, right:10, bottom:20, left:34 };
-  const maxV = Math.max(1, ...data.map(d=>d[valueKey]), ...refLines.map(r=>r.y));
-  const innerW = width - padding.left - padding.right;
-  const innerH = height - padding.top - padding.bottom;
-  const gap = innerW / data.length;
-  const barW = gap * 0.65;
-  const yScale = v => padding.top + innerH - (v/maxV) * innerH;
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width:"100%", height, display:"block" }}>
-      {refLines.map((rl,i) => (
-        <line key={i} x1={padding.left} x2={width-padding.right} y1={yScale(rl.y)} y2={yScale(rl.y)} stroke={rl.color||"#ccc"} strokeDasharray="3 3" strokeWidth={1} />
-      ))}
-      {data.map((d,i) => {
-        const x = padding.left + i*gap + (gap-barW)/2;
-        const y = yScale(d[valueKey]);
-        return <rect key={i} x={x} y={y} width={barW} height={(padding.top+innerH)-y} fill={colorFor(d)} rx={3} />;
-      })}
-    </svg>
-  );
+// Wrapper fino em cima do Chart.js — usado só onde nossos gráficos SVG próprios
+// não dão conta (stacked bar, donut). Cria/destrói a instância a cada mudança
+// de dados pra não vazar canvas nem duplicar quando o componente re-renderiza.
+function ChartCanvas({ type, data, options, height=220 }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const dataKey = JSON.stringify(data);
+  const optionsKey = JSON.stringify(options);
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    chartRef.current = new Chart(canvasRef.current, { type, data, options });
+    return () => { chartRef.current && chartRef.current.destroy(); };
+  }, [type, dataKey, optionsKey]);
+  return <canvas ref={canvasRef} height={height}></canvas>;
 }
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
-function StatCard({ label, value, unit, sub, accent="#111" }) {
+function Kpi({ label, value, unit, delta, deltaDir }) {
   return (
-    <div className="card" style={{ display:"flex", flexDirection:"column", gap:6 }}>
-      <div className="card-label">{label}</div>
-      <div style={{ display:"flex", alignItems:"baseline", gap:5 }}>
-        <span className="stat-hero" style={{ color:accent }}>{value}</span>
-        {unit && <span className="stat-unit">{unit}</span>}
-      </div>
-      {sub && <div style={{ fontSize:11, color:"#aaa" }}>{sub}</div>}
+    <div className="kpi">
+      <div className="label">{label}</div>
+      <div className="value">{value}{unit && <span className="unit">{unit}</span>}</div>
+      {delta && <div className={`delta ${deltaDir||""}`}>{delta}</div>}
     </div>
   );
 }
@@ -676,133 +510,166 @@ function SegmentFields({ label, mode, value, pace, onChange }) {
 }
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
-function PageOverview({ activities, latestPmc, daysOut, plannedWorkouts }) {
+// Compara um recorte de atividades (ex: últimos 7 dias) com o recorte imediatamente
+// anterior de mesma duração — usado pros deltas ("▲ 6% vs. semana anterior") do
+// kpi-row, tudo calculado a partir de activities real (sync Strava), sem inventar.
+function periodStats(activities, daysBack, offsetDays=0) {
+  const end = Date.now() - offsetDays*86400000;
+  const start = end - daysBack*86400000;
+  const inRange = activities.filter(a => { const t = new Date(a.start_date).getTime(); return t > start && t <= end; });
+  const volumeKm = inRange.reduce((s,a) => s + (a.distance_m||0), 0) / 1000;
+  const zoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
+  inRange.forEach(a => { const zm = activityZoneMinutes(a); ZONE_DEFS.forEach(z => zoneMin[z.zone] += zm[z.zone]||0); });
+  const totalZoneMin = ZONE_DEFS.reduce((s,z) => s+zoneMin[z.zone], 0);
+  const z3Pct = totalZoneMin > 0 ? (zoneMin.Z3/totalZoneMin*100) : 0;
+  return { count: inRange.length, volumeKm, z3Pct };
+}
+function deltaLabel(curr, prev, unit="") {
+  if (!prev) return null;
+  const pct = ((curr-prev)/prev*100);
+  const dir = pct >= 0 ? "up" : "down";
+  const arrow = pct >= 0 ? "▲" : "▼";
+  return { text:`${arrow} ${Math.abs(pct).toFixed(0)}% vs. período anterior`, dir };
+}
+
+function PageResumo({ activities, latestPmc, daysOut, plannedWorkouts }) {
+  const [search, setSearch] = useState("");
+  const [sortState, setSortState] = useState({ key:"date", dir:-1 });
+
   const last = activities[0];
   const lastType = last ? classifyActivity(last) : null;
   const avgPower = last ? Math.round(last.weighted_average_watts || last.average_watts || 0) : 0;
   const exec = last ? analyzeExecution(last, plannedWorkouts) : null;
 
+  const curr7 = periodStats(activities, 7, 0);
+  const prev7 = periodStats(activities, 7, 7);
+  const volDelta = deltaLabel(curr7.volumeKm, prev7.volumeKm);
+  const actDelta = deltaLabel(curr7.count, prev7.count);
+  const z3Delta = deltaLabel(curr7.z3Pct, prev7.z3Pct);
+
+  // Comparação com as últimas sessões do mesmo tipo — real, calculado a partir do histórico sincronizado
+  const sameTypeRecent = last ? activities.filter(a => a !== last && classifyActivity(a).label === lastType.label).slice(0,4) : [];
+  const sameTypeAvgHr = sameTypeRecent.filter(a=>a.average_heartrate).length
+    ? sameTypeRecent.reduce((s,a)=>s+(a.average_heartrate||0),0) / sameTypeRecent.filter(a=>a.average_heartrate).length
+    : null;
+  const hrDiff = (sameTypeAvgHr && last?.average_heartrate) ? Math.round(last.average_heartrate - sameTypeAvgHr) : null;
+
+  let rows = activities.filter(a => !search || (a.name||"").toLowerCase().includes(search.toLowerCase()) || (a.type||"").toLowerCase().includes(search.toLowerCase()));
+  rows = rows.slice().sort((a,b) => {
+    const getVal = (a) => {
+      if (sortState.key==="date") return new Date(a.start_date).getTime();
+      if (sortState.key==="distKm") return a.distance_m||0;
+      if (sortState.key==="paceSec") return a.distance_m ? a.moving_time_s/(a.distance_m/1000) : -1;
+      if (sortState.key==="hr") return a.average_heartrate||-1;
+      if (sortState.key==="power") return a.weighted_average_watts||a.average_watts||-1;
+      if (sortState.key==="rtss") return a.rtss||-1;
+      return (a.name||"").toLowerCase();
+    };
+    const va = getVal(a), vb = getVal(b);
+    if (va<vb) return -1*sortState.dir;
+    if (va>vb) return 1*sortState.dir;
+    return 0;
+  });
+  function onSort(key) {
+    setSortState(s => s.key===key ? { key, dir:s.dir*-1 } : { key, dir:1 });
+  }
+
   return (
     <div className="page gap-14">
       <div>
-        <div className="page-title">GPS → Chicago 2026</div>
-        <div className="page-sub">Semana 2 de 15 · Build Phase · {daysOut} dias para o race day</div>
+        <div className="eyebrow">Registro de treino</div>
+        <div className="page-title">Resumo</div>
+        <div className="page-sub">{daysOut} dias para o race day · dados reais do Strava</div>
       </div>
 
-      <div className="grid-4">
-        <StatCard label="Dias para a prova" value={daysOut} accent="#111" />
-        <StatCard label="LT2 Pace" value="3:58" unit="/km" sub="393W · 178bpm" accent="#111" />
-        <StatCard label="VDOT" value={VDOT} sub="Riegel 2:52:30" accent="#111" />
-        <StatCard label="CTL / TSB" value={Math.round(latestPmc.ctl)} unit={` / ${Math.round(latestPmc.tsb)}`} sub="Fitness / Forma" accent="#111" />
-      </div>
-
-      {/* Last workout summary — dados reais do Strava */}
+      {/* Último treino — dados reais do Strava */}
       {last && (
         <div className="card">
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12 }}>
+          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", flexWrap:"wrap", gap:8, marginBottom:16 }}>
             <div>
-              <div className="card-label">Último treino (Strava)</div>
-              <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.3px" }}>{last.name}</div>
-              <div style={{ fontSize:12, color:"#888", marginTop:2 }}>{last.start_date.slice(0,10)}</div>
-            </div>
-            <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
-              <div style={{ textAlign:"center" }}>
-                <div className="stat-hero sm">{((last.distance_m||0)/1000).toFixed(1)}</div>
-                <div className="stat-unit">km</div>
-              </div>
-              <div style={{ textAlign:"center" }}>
-                <div className="stat-hero sm">{fmtDuration(last.moving_time_s)}</div>
-                <div className="stat-unit">tempo</div>
-              </div>
-              <div style={{ textAlign:"center" }}>
-                <div className="stat-hero sm">{avgPower}W</div>
-                <div className="stat-unit">potência méd.</div>
-              </div>
+              <div className="eyebrow" style={{ marginBottom:4 }}>Session log</div>
+              {lastType && <span className="zone-badge" style={{ background:lastType.color }}>{lastType.label}</span>}
+              <span style={{ marginLeft:10, fontSize:17, fontWeight:700 }}>{last.name}</span>
+              <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:6 }}>{last.start_date.slice(0,10)}</div>
             </div>
           </div>
-          <div className="grid-4" style={{ marginTop:16 }}>
-            <div>
-              <div className="card-label">Pace méd.</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{paceStr(last.distance_m, last.moving_time_s)}/km</div>
-            </div>
-            <div>
-              <div className="card-label">FC méd.</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{last.average_heartrate ? `${Math.round(last.average_heartrate)}bpm` : "–"}</div>
-            </div>
-            <div>
-              <div className="card-label">rTSS</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18 }}>{last.rtss ? last.rtss.toFixed(0) : "–"}</div>
-            </div>
-            <div>
-              <div className="card-label">Tipo</div>
-              {lastType && <span className="type-badge" style={{ background:lastType.color+"22", color:lastType.color }}>{lastType.label}</span>}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Análise de execução — compara o treino real com o planejado no calendário */}
-      {exec && (
-        <div className="card">
-          <div className="card-label">Análise de Execução</div>
-          {exec.hasPlan ? (
-            <>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
-                <span className="type-badge" style={{ background:exec.verdictColor+"22", color:exec.verdictColor, fontSize:12, padding:"4px 12px" }}>{exec.verdict}</span>
-                <span style={{ fontSize:12, color:"#888" }}>
-                  rTSS real {Math.round(exec.actualRtss)} vs planejado {Math.round(exec.planRtss)}
-                  {exec.ratio!=null && ` (${Math.round(exec.ratio*100)}%)`}
-                </span>
-              </div>
-              <div className="grid-2" style={{ gap:10, marginBottom:12 }}>
-                <div>
-                  <div className="card-label">Duração</div>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16 }}>
-                    {fmtDuration(last.moving_time_s)} <span style={{ color:"#bbb", fontSize:11, fontFamily:"'Inter',sans-serif" }}>plano: {Math.round(exec.planDurationMin)}min</span>
-                  </div>
-                </div>
-                {exec.targetZone && (
-                  <div>
-                    <div className="card-label">Tempo na zona alvo ({exec.targetZone})</div>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16 }}>{exec.targetZonePct!=null ? `${exec.targetZonePct.toFixed(0)}%` : "–"}</div>
-                  </div>
-                )}
-              </div>
+          <div className="lw-stats">
+            <div><span className="lw-val">{((last.distance_m||0)/1000).toFixed(1)}<span className="lw-unit">km</span></span><span className="lw-label">Distância</span></div>
+            <div><span className="lw-val">{fmtDuration(last.moving_time_s)}</span><span className="lw-label">Duração</span></div>
+            <div><span className="lw-val">{paceStr(last.distance_m, last.moving_time_s)}<span className="lw-unit">/km</span></span><span className="lw-label">Pace médio</span></div>
+            <div><span className="lw-val">{last.average_heartrate ? Math.round(last.average_heartrate) : "–"}<span className="lw-unit">bpm</span></span><span className="lw-label">FC média</span></div>
+            <div><span className="lw-val">{avgPower||"–"}{avgPower?<span className="lw-unit">W</span>:null}</span><span className="lw-label">Potência média</span></div>
+            <div><span className="lw-val">{last.suffer_score ?? "–"}</span><span className="lw-label">Esforço (Strava)</span></div>
+          </div>
+
+          {exec && (
+            <div className="analysis">
+              <div className="analysis-label">Análise</div>
+              {exec.hasPlan ? (
+                <>
+                  <p>
+                    Esse treino ficou <strong>{exec.verdict.toLowerCase()}</strong>: rTSS real de <strong>{Math.round(exec.actualRtss)}</strong> contra
+                    {" "}<strong>{Math.round(exec.planRtss)}</strong> planejado{exec.ratio!=null && ` (${Math.round(exec.ratio*100)}% do previsto)`}.
+                    {exec.targetZone && exec.targetZonePct!=null && ` Passou ${exec.targetZonePct.toFixed(0)}% do tempo na zona alvo (${exec.targetZone}).`}
+                  </p>
+                  {hrDiff!=null && (
+                    <p>Comparado às últimas {sameTypeRecent.length} sessões de <strong>{lastType.label}</strong>, a FC média ficou
+                      {" "}<strong>{Math.abs(hrDiff)}bpm {hrDiff>0?"mais alta":"mais baixa"}</strong> — {hrDiff<0 ? "sinal de menor custo fisiológico pro mesmo tipo de esforço." : "vale observar se isso virar padrão nas próximas sessões."}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p>Sem treino planejado nesse dia no calendário (Training Log) — não dá pra comparar com o plano, mas dá pra ver a distribuição de zona abaixo.</p>
+                  {hrDiff!=null && (
+                    <p>Comparado às últimas {sameTypeRecent.length} sessões de <strong>{lastType.label}</strong>, a FC média ficou <strong>{Math.abs(hrDiff)}bpm {hrDiff>0?"mais alta":"mais baixa"}</strong>.</p>
+                  )}
+                </>
+              )}
               {exec.totalZoneMin > 0 && <ZoneTimeRow label="Real" totalMin={exec.totalZoneMin} pct={exec.zonePct} empty="" />}
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize:12, color:"#888", marginBottom:10 }}>
-                Sem treino planejado nesse dia no calendário (Fitness Proj) — não dá pra comparar com o plano.
-              </div>
-              {exec.totalZoneMin > 0 && <ZoneTimeRow label="Real" totalMin={exec.totalZoneMin} pct={exec.zonePct} empty="" />}
-            </>
+            </div>
           )}
         </div>
       )}
 
-      {/* Recent activities — dados reais do Strava */}
+      <div className="kpi-row">
+        <Kpi label="Volume 7 dias" value={curr7.volumeKm.toFixed(0)} unit="km" delta={volDelta?.text} deltaDir={volDelta?.dir} />
+        <Kpi label="Atividades 7 dias" value={curr7.count} delta={actDelta?.text} deltaDir={actDelta?.dir} />
+        <Kpi label="Fitness (CTL)" value={Math.round(latestPmc.ctl)} delta={`TSB ${Math.round(latestPmc.tsb)}`} deltaDir={latestPmc.tsb>=0?"up":"down"} />
+        <Kpi label="Zona cinza (Z3)" value={curr7.z3Pct.toFixed(0)} unit="%" delta={z3Delta?.text} deltaDir={z3Delta ? (z3Delta.dir==="up"?"down":"up") : null} />
+      </div>
+
       <div className="card">
-        <div className="card-label">Últimas atividades (sync Strava)</div>
-        <div style={{ overflowX:"auto" }}>
+        <div className="card-label">Atividades recentes</div>
+        <div className="page-sub" style={{ marginBottom:10 }}>Últimas sessões sincronizadas do Strava · clique no cabeçalho pra ordenar</div>
+        <div className="search-row">
+          <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome ou tipo de treino…" />
+        </div>
+        <div className="table-scroll">
           <table className="lap-table">
             <thead>
-              <tr><th>Data</th><th>Nome</th><th>Dist</th><th>Pace</th><th>Power</th><th>HR</th><th>rTSS</th><th>Tipo</th></tr>
+              <tr>
+                <th></th>
+                {[["date","Data"],["name","Treino"],["distKm","Dist."],["paceSec","Pace"],["hr","FC méd."],["power","Potência"],["rtss","rTSS"]].map(([key,label]) => (
+                  <th key={key} className={sortState.key===key?"sorted":""} data-dir={sortState.dir===1?"▲":"▼"} onClick={()=>onSort(key)}>{label}</th>
+                ))}
+              </tr>
             </thead>
             <tbody>
-              {activities.slice(0,12).map(a => {
+              {rows.slice(0,20).map(a => {
                 const t = classifyActivity(a);
                 const pw = Math.round(a.weighted_average_watts || a.average_watts || 0);
                 return (
                   <tr key={a.id}>
-                    <td style={{ color:"#999", fontFamily:"'DM Mono',monospace", fontSize:11 }}>{a.start_date.slice(5,10)}</td>
+                    <td><span className="dot" style={{ borderRadius:"50%", background:t.color }} /></td>
+                    <td style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{a.start_date.slice(5,10)}</td>
                     <td style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.name}</td>
                     <td style={{ fontFamily:"'DM Mono',monospace" }}>{((a.distance_m||0)/1000).toFixed(1)}km</td>
                     <td style={{ fontFamily:"'DM Mono',monospace" }}>{paceStr(a.distance_m, a.moving_time_s)}</td>
-                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{pw||"–"}{pw?"W":""}</td>
                     <td style={{ fontFamily:"'DM Mono',monospace" }}>{a.average_heartrate ? Math.round(a.average_heartrate) : "–"}</td>
+                    <td style={{ fontFamily:"'DM Mono',monospace" }}>{pw||"–"}{pw?"W":""}</td>
                     <td style={{ fontFamily:"'DM Mono',monospace" }}>{a.rtss ? a.rtss.toFixed(0) : "–"}</td>
-                    <td><span className="type-badge" style={{ background:t.color+"22", color:t.color }}>{t.label}</span></td>
                   </tr>
                 );
               })}
@@ -810,211 +677,70 @@ function PageOverview({ activities, latestPmc, daysOut, plannedWorkouts }) {
           </table>
         </div>
       </div>
-
-      {/* Biomechanics — referência manual (não vem do Strava) */}
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-label">Decoupling — Referência manual</div>
-          <div className="stat-hero">10.8%</div>
-          <div style={{ fontSize:11, color:"#888", marginTop:6 }}>Target &lt;7% · último teste 27km</div>
-        </div>
-        <div className="card">
-          <div className="card-label">Cadência Z2 — Referência manual</div>
-          <div className="stat-hero">177</div>
-          <div style={{ fontSize:11, color:"#888", marginTop:6 }}>spm · Target 180–182spm</div>
-        </div>
-      </div>
     </div>
   );
 }
 
-function PageFitness({ pmc, latestPmc, plannedWorkouts }) {
-  const hist = pmc.slice(-90).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
-  const forecast = computeFitnessForecast(pmc, plannedWorkouts, RACE_DATE);
+function PageFrequencia({ activities }) {
+  const weeks = WEEKS.filter(w => w.status !== "future").slice(-8);
 
-  return (
-    <div className="page gap-14">
-      <div>
-        <div className="page-title">Fitness & Carga</div>
-        <div className="page-sub">Modelo Banister CTL/ATL/TSB · Fitness = Relative Effort real do Strava, Fadiga calculada · Projeção até Chicago</div>
-      </div>
-
-      <div className="grid-3">
-        {[
-          { l:"CTL · Fitness", v:Math.round(latestPmc.ctl), d:"Carga real do Strava (Relative Effort) · 42d", c:"#4DABF7" },
-          { l:"ATL · Fadiga",  v:Math.round(latestPmc.atl), d:"Calculada · decaimento 7d",    c:"#FF3333" },
-          { l:"TSB · Forma",   v:Math.round(latestPmc.tsb), d:"Zona de construção", c:"#FCC419" },
-        ].map(m => (
-          <div key={m.l} className="card">
-            <div className="card-label">{m.l}</div>
-            <div className="stat-hero">{m.v}</div>
-            <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:6 }}>{m.d}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-label">Histórico Real — Últimos 90 dias</div>
-        <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
-          CTL a partir do Relative Effort de cada atividade (direto do Strava) · ATL/TSB calculados por decaimento exponencial (Banister)
-        </div>
-        <MiniLineChart
-          data={hist}
-          lines={[
-            { key:"ctl", color:"#4DABF7", width:2 },
-            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
-            { key:"tsb", color:"#FCC419", width:2 },
-          ]}
-          height={200}
-        />
-        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
-          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
-          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
-          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-label">Projeção CTL / ATL / TSB → Race Day (calendário)</div>
-        <div style={{ fontSize:11, color:"#aaa", marginBottom:16 }}>
-          Baseada nos treinos cadastrados na aba Fitness Proj · Zona verde TSB: +15 a +25 no race day
-        </div>
-        <MiniLineChart
-          data={forecast}
-          lines={[
-            { key:"ctl", color:"#4DABF7", width:2.5 },
-            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
-            { key:"tsb", color:"#FCC419", width:2.5 },
-          ]}
-          height={240}
-          refLines={[{y:15,color:"#94D82D",label:"TSB min"},{y:25,color:"#94D82D",label:"TSB max"}]}
-        />
-        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
-          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
-          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
-          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-label">Volume por Semana — 90–120km/sem (plano)</div>
-        <MiniBarChart
-          data={WEEKS.filter(w=>w.n>0)}
-          valueKey="vol"
-          colorFor={w => PHASE_COLORS[w.phase]||"#4DABF7"}
-          height={160}
-          refLines={[{y:90,color:"#4DABF7"},{y:120,color:"#FF3333"}]}
-        />
-        <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:10 }}>
-          {Object.entries(PHASE_COLORS).map(([ph,c]) => (
-            <div key={ph} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#888" }}>
-              <div style={{ width:8, height:8, borderRadius:"50%", background:c }} />{ph}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-label">Âncoras fisiológicas</div>
-          {[
-            { l:"LT2 Pace",      v:"3:58/km",  s:"→ 3:52 estimado fresco (recal. S6)" },
-            { l:"LT2 Power",     v:"393W",      s:"Referência principal de zona" },
-            { l:"LT2 HR",        v:"178 bpm",   s:"Use power como âncora primária" },
-            { l:"Max HR",        v:"196 bpm",   s:"6×800m Ibirapuera" },
-            { l:"VDOT",          v:"58",        s:"Projeção maratona 2:52:30 base Riegel" },
-          ].map((a,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom: i<4 ? "1px solid #f5f5f5" : "none" }}>
-              <div>
-                <div style={{ fontSize:13, color:"#555" }}>{a.l}</div>
-                <div style={{ fontSize:11, color:"#bbb" }}>{a.s}</div>
-              </div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:500 }}>{a.v}</div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="card-label">Targets de adaptação</div>
-          {[
-            { l:"Decoupling (32km)", curr:"10.8%", tgt:"<7%"        },
-            { l:"Cadência Z2",      curr:"177spm", tgt:"180–182spm" },
-            { l:"Pace Z2 natural",  curr:"5:00",   tgt:"4:55/km"    },
-            { l:"LT2 Pace (S6)",    curr:"3:58",   tgt:"3:52/km"    },
-            { l:"TSB race day",     curr:String(Math.round(latestPmc.tsb)), tgt:"+18 a +22"  },
-          ].map((o,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom: i<4 ? "1px solid #f5f5f5" : "none" }}>
-              <div style={{ fontSize:12, color:"#555" }}>{o.l}</div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontFamily:"'DM Mono',monospace" }}>
-                <span style={{ color:"#FF922B" }}>{o.curr}</span>
-                <span style={{ color:"#ccc" }}>→</span>
-                <span style={{ color:"#94D82D" }}>{o.tgt}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PageZones({ plannedWorkouts, activities }) {
-  const byDate = {};
-  plannedWorkouts.forEach(w => { (byDate[w.date] = byDate[w.date] || []).push(w); });
-
-  function zoneBreakdown(zoneMinObjects) {
-    const zoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
-    zoneMinObjects.forEach(zm => {
-      ZONE_DEFS.forEach(z => { zoneMin[z.zone] += zm[z.zone] || 0; });
-    });
-    const totalMin = ZONE_DEFS.reduce((s,z) => s + zoneMin[z.zone], 0);
-    const pct = {};
-    ZONE_DEFS.forEach(z => { pct[z.zone] = totalMin > 0 ? (zoneMin[z.zone]/totalMin*100) : 0; });
-    return { totalMin, pct };
-  }
-
-  const weekZoneData = WEEKS.map(w => {
+  const weekZoneMinutes = weeks.map(w => {
     const { startN, endN } = parseWeekRange(w.dates);
     const startStr = ymdFromDayNum(startN), endStr = ymdFromDayNum(endN);
-
-    const real = zoneBreakdown(
-      activities
-        .filter(a => { const d = a.start_date.slice(0,10); return d >= startStr && d <= endStr; })
-        .map(a => activityZoneMinutes(a))
-    );
-
-    const plannedEntries = [];
-    for (let n=startN; n<=endN; n++) {
-      (byDate[ymdFromDayNum(n)] || []).forEach(wk => {
-        const zone = classifyIntensity(wk.intensityType, wk.intensityValue) || WORKOUT_KINDS[wk.kind]?.zone;
-        if (!zone || !wk.durationMin) return;
-        plannedEntries.push({ [zone]: wk.durationMin });
-      });
-    }
-    const planned = zoneBreakdown(plannedEntries);
-
-    return { week:w, real, planned };
+    const inWeek = activities.filter(a => { const d = a.start_date.slice(0,10); return d >= startStr && d <= endStr; });
+    const zoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
+    inWeek.forEach(a => { const zm = activityZoneMinutes(a); ZONE_DEFS.forEach(z => zoneMin[z.zone] += zm[z.zone]||0); });
+    return { week:w, zoneMin };
   });
+
+  const barData = {
+    labels: weekZoneMinutes.map(w => `Sem ${w.week.n}`),
+    datasets: ZONE_DEFS.map(z => ({
+      label: z.zone,
+      data: weekZoneMinutes.map(w => Math.round(w.zoneMin[z.zone])),
+      backgroundColor: z.color,
+      stack: "s",
+    })),
+  };
+  const barOptions = {
+    responsive: true,
+    plugins: { legend: { display:false } },
+    scales: {
+      x: { stacked:true, grid:{ display:false } },
+      y: { stacked:true, grid:{ color:"#e1e0d9" }, title:{ display:true, text:"minutos", color:"#93918a" } },
+    },
+  };
+
+  const totalZoneMin = { Z1:0, Z2:0, Z3:0, Z4:0, Z5:0 };
+  weekZoneMinutes.forEach(w => ZONE_DEFS.forEach(z => totalZoneMin[z.zone] += w.zoneMin[z.zone]));
+  const totalMinAll = ZONE_DEFS.reduce((s,z) => s + totalZoneMin[z.zone], 0);
+  const donutData = {
+    labels: ZONE_DEFS.map(z => z.zone),
+    datasets: [{ data: ZONE_DEFS.map(z => Math.round(totalZoneMin[z.zone])), backgroundColor: ZONE_DEFS.map(z => z.color), borderColor:"#fcfcfb", borderWidth:3 }],
+  };
+  const donutOptions = { responsive:true, cutout:"68%", plugins:{ legend:{ display:false } } };
 
   return (
     <div className="page gap-14">
       <div>
-        <div className="page-title">Zonas de Treino</div>
-        <div className="page-sub">Calculadas a partir do LT2: 393W · 178bpm · 3:58/km</div>
+        <div className="page-title">Distribuição de FC</div>
+        <div className="page-sub">Tempo real por zona · calculado a partir dos streams do Strava (segundo a segundo, sem mascarar intervalos)</div>
       </div>
+
       <div className="card">
         <div className="card-label">Definição das Zonas</div>
-        <div style={{ overflowX:"auto" }}>
+        <div className="table-scroll">
           <table className="lap-table">
             <thead><tr><th>Zona</th><th>Nome</th><th>Potência</th><th>FC</th><th>Pace</th><th>% FTP</th></tr></thead>
             <tbody>
               {ZONE_DEFS.map(z => (
                 <tr key={z.zone}>
                   <td><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:z.color }} /><span style={{ fontWeight:700, color:z.color }}>{z.zone}</span></div></td>
-                  <td style={{ color:"#555" }}>{z.label}</td>
+                  <td>{z.label}</td>
                   <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12 }}>{z.pw}</td>
                   <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12 }}>{z.hr}</td>
                   <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12 }}>{z.pace}</td>
-                  <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:"#888" }}>{z.pct}%</td>
+                  <td style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:"var(--text-muted)" }}>{z.pct}%</td>
                 </tr>
               ))}
             </tbody>
@@ -1022,21 +748,19 @@ function PageZones({ plannedWorkouts, activities }) {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-label">% de Tempo por Zona · por Semana</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-          {weekZoneData.map(({ week, real, planned }) => (
-            <div key={week.n} style={{ paddingBottom:12, borderBottom:"1px solid #f5f5f5" }}>
-              <div style={{ fontSize:11, color:"#666", fontWeight:700, marginBottom:6 }}>
-                Sem {week.n} <span style={{ color:"#bbb", fontWeight:400 }}>· {week.dates}</span>
-                {week.status==="current" && <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>}
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                <ZoneTimeRow label="Real" totalMin={real.totalMin} pct={real.pct} empty="sem atividades sincronizadas" />
-                <ZoneTimeRow label="Planejado" totalMin={planned.totalMin} pct={planned.pct} empty="sem treinos cadastrados" />
-              </div>
-            </div>
-          ))}
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-label">Distribuição de zona por semana</div>
+          <div className="page-sub" style={{ marginBottom:10 }}>Tempo em cada zona de FC — últimas {weeks.length} semanas</div>
+          {totalMinAll > 0 ? <ChartCanvas type="bar" data={barData} options={barOptions} height={220} /> : <div style={{ fontSize:12, color:"var(--text-muted)" }}>Sem atividades sincronizadas com zona calculada ainda.</div>}
+          <div className="zone-legend">
+            {ZONE_DEFS.map(z => <span key={z.zone}><i className="dot" style={{ background:z.color }}></i>{z.zone} {z.label}</span>)}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-label">Zonas — total do período</div>
+          <div className="page-sub" style={{ marginBottom:10 }}>Minutos acumulados por zona</div>
+          {totalMinAll > 0 ? <ChartCanvas type="doughnut" data={donutData} options={donutOptions} height={220} /> : <div style={{ fontSize:12, color:"var(--text-muted)" }}>Sem atividades sincronizadas com zona calculada ainda.</div>}
         </div>
       </div>
     </div>
@@ -1051,7 +775,7 @@ const DEFAULT_PLAN_FORM = {
   cdMode:"time", cdValue:10, cdPace:"",
 };
 
-function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
+function PageTrainingLog({ pmc, plannedWorkouts, setPlannedWorkouts }) {
   const [openDay, setOpenDay] = useState(null);
   const [form, setForm] = useState(DEFAULT_PLAN_FORM);
 
@@ -1119,9 +843,16 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
 
   return (
     <div className="page gap-14">
-      <div>
-        <div className="page-title">Fitness Proj</div>
-        <div className="page-sub">Calendário de treinos planejados · a previsão de CTL/ATL/TSB abaixo é a mesma exibida na aba Fitness</div>
+      <div className="tl-head" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:14, marginBottom:6 }}>
+        <div>
+          <div className="page-title">Training Log</div>
+          <div className="page-sub">Clique em um dia pra registrar ou editar um treino · rTSS estimado a partir do WU/Série/CD</div>
+        </div>
+        <div className="tl-legend">
+          {Object.entries(WORKOUT_KINDS).map(([k,v]) => (
+            <span key={k}><i className="dot" style={{ background:v.color, borderRadius:"50%" }}></i>{v.label}</span>
+          ))}
+        </div>
       </div>
 
       <div className="card">
@@ -1129,83 +860,67 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
         <MiniLineChart
           data={forecast}
           lines={[
-            { key:"ctl", color:"#4DABF7", width:2.5 },
-            { key:"atl", color:"#FF3333", width:1.5, dash:"5 3" },
-            { key:"tsb", color:"#FCC419", width:2.5 },
+            { key:"ctl", color:"#2a78d6", width:2.5 },
+            { key:"atl", color:"#e34948", width:1.5, dash:"5 3" },
+            { key:"tsb", color:"#eda100", width:2.5 },
           ]}
           height={200}
         />
-        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"#888" }}>
-          <span><span style={{color:"#4DABF7"}}>●</span> CTL</span>
-          <span><span style={{color:"#FF3333"}}>●</span> ATL</span>
-          <span><span style={{color:"#FCC419"}}>●</span> TSB</span>
+        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"var(--text-muted)" }}>
+          <span><span style={{color:"#2a78d6"}}>●</span> CTL</span>
+          <span><span style={{color:"#e34948"}}>●</span> ATL</span>
+          <span><span style={{color:"#eda100"}}>●</span> TSB</span>
         </div>
       </div>
 
-      <div className="gap-14">
-        {WEEKS.map(w => {
-          const { startN, endN } = parseWeekRange(w.dates);
-          const dayNs = [];
-          for (let n=startN; n<=endN; n++) dayNs.push(n);
-          const weekHasOpenDay = dayNs.some(n => ymdFromDayNum(n) === openDay);
-          const weekRtss = dayNs.reduce((sum,n) => sum + (byDate[ymdFromDayNum(n)]||[]).reduce((s,wk)=>s+(wk.estRtss||0),0), 0);
+      <div className="card">
+        <div className="tl-cal-header">
+          <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
+          <div>Semana</div>
+        </div>
+        <div className="gap-14">
+          {WEEKS.map(w => {
+            const { startN, endN } = parseWeekRange(w.dates);
+            const dayNs = [];
+            for (let n=startN; n<=endN; n++) dayNs.push(n);
+            const weekHasOpenDay = dayNs.some(n => ymdFromDayNum(n) === openDay);
+            const weekRtss = dayNs.reduce((sum,n) => sum + (byDate[ymdFromDayNum(n)]||[]).reduce((s,wk)=>s+(wk.estRtss||0),0), 0);
+            const weekMin = dayNs.reduce((sum,n) => sum + (byDate[ymdFromDayNum(n)]||[]).reduce((s,wk)=>s+(wk.durationMin||0),0), 0);
 
-          return (
-            <div key={w.n} className={`week-card ${w.status==="current"?"current":""}`} style={{ borderLeftColor: PHASE_COLORS[w.phase]||"#ddd" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10, flexWrap:"wrap", gap:8 }}>
-                <div>
-                  <span style={{ fontSize:10, fontWeight:700, color: PHASE_COLORS[w.phase]||"#888", textTransform:"uppercase", letterSpacing:"0.1em" }}>{w.phase}</span>
-                  {w.status==="current" && <span style={{ marginLeft:8, background:"#E8FF00", color:"#111", fontSize:9, fontWeight:800, padding:"1px 7px", borderRadius:20, textTransform:"uppercase" }}>Atual</span>}
-                  {w.race && <span style={{ marginLeft:8, fontSize:14 }}>🏅</span>}
-                  <div style={{ fontSize:13, fontWeight:700, marginTop:2 }}>Semana {w.n} · {w.dates}</div>
+            return (
+              <div key={w.n}>
+                <div style={{ fontSize:11, color:"var(--text-muted)", fontWeight:600, marginBottom:6 }}>
+                  Semana {w.n} <span style={{ color:"var(--text-muted)", fontWeight:400 }}>· {w.dates}</span>
+                  {w.status==="current" && <span style={{ marginLeft:8, color:"var(--accent)", fontWeight:700, textTransform:"uppercase", fontSize:9 }}>Atual</span>}
+                  {w.race && <span style={{ marginLeft:8, fontSize:13 }}>🏅</span>}
                 </div>
-                <div style={{ display:"flex", gap:18 }}>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500 }}>{w.vol}km</div>
-                    <div style={{ fontSize:10, color:"#888" }}>meta plano</div>
-                  </div>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color:"#FF922B" }}>{weekRtss}</div>
-                    <div style={{ fontSize:10, color:"#888" }}>rTSS total</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
-                {dayNs.map(n => {
-                  const dateStr = ymdFromDayNum(n);
-                  const dayWorkouts = byDate[dateStr] || [];
-                  const isOpen = openDay === dateStr;
-                  return (
-                    <div key={dateStr} style={{ minWidth:104, flexShrink:0, border:`1px solid ${isOpen?"#111":"#eee"}`, borderRadius:8, padding:8, background: isOpen?"#fafafa":"#fff" }}>
-                      <div style={{ fontSize:10, color:"#aaa", fontWeight:700 }}>{weekdayPtFromDayNum(n)} {dateStr.slice(8)}</div>
-                      <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6, minHeight:20 }}>
+                <div className="tl-week-row">
+                  {dayNs.map(n => {
+                    const dateStr = ymdFromDayNum(n);
+                    const dayWorkouts = byDate[dateStr] || [];
+                    const isOpen = openDay === dateStr;
+                    return (
+                      <div key={dateStr} className={`tl-day ${isOpen?"current":""}`} onClick={() => openForm(dateStr, dayWorkouts[0]||null)}>
+                        <div className="tl-day-date">{weekdayPtFromDayNum(n)} {dateStr.slice(8)}</div>
                         {dayWorkouts.map(wk => (
-                          <button key={wk.id} onClick={() => openForm(dateStr, wk)} style={{
-                            textAlign:"left", border:"none", borderRadius:5, padding:"3px 6px", fontSize:10, fontWeight:700, cursor:"pointer",
-                            background:(WORKOUT_KINDS[wk.kind]?.color||"#ccc")+"22", color:WORKOUT_KINDS[wk.kind]?.color||"#888",
-                          }}>
-                            <div>{WORKOUT_KINDS[wk.kind]?.label||wk.kind} · {wk.durationMin}min</div>
-                            {wk.series ? (
-                              <div style={{ fontWeight:500, opacity:0.8, marginTop:1 }}>
-                                {wk.series.reps}x {formatMmSs(wk.series.repTimeSec)}/{formatMmSs(wk.series.restTimeSec)}
-                                {wk.series.intensityValue ? ` @ ${wk.series.intensityValue}` : ""}
-                              </div>
-                            ) : wk.intensityValue && (
-                              <div style={{ fontWeight:500, opacity:0.8, marginTop:1 }}>{wk.intensityValue}</div>
-                            )}
-                          </button>
+                          <div key={wk.id} className="tl-day-tag" style={{ background:WORKOUT_KINDS[wk.kind]?.color||"#ccc" }}>{WORKOUT_KINDS[wk.kind]?.label||wk.kind}</div>
                         ))}
-                        <button onClick={() => openForm(dateStr, null)} style={{
-                          border:"1px dashed #ddd", background:"transparent", color:"#bbb", borderRadius:5, fontSize:11, padding:"3px 0", cursor:"pointer",
-                        }}>+ treino</button>
+                        {dayWorkouts.length===0 && <div style={{ fontSize:16, color:"var(--text-muted)" }}>+</div>}
+                        {dayWorkouts.length>0 && (
+                          <div style={{ fontSize:10.5, color:"var(--text-muted)" }}>
+                            {dayWorkouts.reduce((s,wk)=>s+(wk.durationMin||0),0)}min · rTSS {dayWorkouts.reduce((s,wk)=>s+(wk.estRtss||0),0)}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                  <div className="tl-week-summary">
+                    <div className="k">rTSS total</div><div className="v">{weekRtss}</div>
+                    <div className="k" style={{ marginTop:6 }}>Tempo</div><div className="v">{fmtDuration(weekMin*60)}</div>
+                  </div>
+                </div>
 
-              {weekHasOpenDay && (() => {
+                {weekHasOpenDay && (() => {
                 const isInterval = INTERVAL_KINDS.includes(form.kind);
                 const estRtssPreview = isInterval ? estimateStructuredRtss(form, form.kind) : estimateRtss(form.durationMin, form.kind);
                 return (
@@ -1285,188 +1000,95 @@ function PagePlan({ pmc, plannedWorkouts, setPlannedWorkouts }) {
           );
         })}
       </div>
+      </div>
     </div>
   );
 }
 
-function PageProjecao() {
+function PagePredictions({ pmc, latestPmc }) {
+  const hist = pmc.slice(-90).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+
   return (
     <div className="page gap-14">
       <div>
-        <div className="page-title">Projeção Chicago</div>
-        <div className="page-sub">Cenários de performance · Estratégia de prova · Protocolo de nutrição</div>
+        <div className="page-title">Predictions</div>
+        <div className="page-sub">Estimativa própria (Riegel a partir do PR real + refs manuais) · sem conector Garmin, não é nativo do Garmin Connect</div>
       </div>
-      <div className="grid-2">
-        {SCENARIOS.map(s => (
-          <div key={s.key} className={`scenario-card ${s.goal?"goal":""}`} style={{ borderLeftWidth:4, borderLeftColor:s.color, borderLeftStyle:"solid" }}>
-            <div style={{ fontSize:10, fontWeight:700, color:s.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>{s.label} {s.goal && "🎯"}</div>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:500, color:"#111", lineHeight:1 }}>{s.time}</div>
-            <div style={{ fontSize:13, color:s.color, marginTop:4, marginBottom:8, fontFamily:"'DM Mono',monospace" }}>{s.pace}</div>
-            <div style={{ fontSize:12, color:"#888", lineHeight:1.5 }}>{s.desc}</div>
-          </div>
+
+      <div className="kpi-row">
+        {RACE_PREDICTIONS.map(p => (
+          <Kpi key={p.label} label={`${p.label} estimado`} value={fmtDuration(p.sec)} delta={p.isAnchor ? "PR real (Meia RJ)" : "Riegel a partir da Meia"} deltaDir="up" />
         ))}
       </div>
+
       <div className="card">
-        <div className="card-label">Estratégia de Pace · Negative Split</div>
-        <div style={{ fontSize:12, color:"#888", marginBottom:14 }}>1ª metade 1:24:30 (4:01/km) · 2ª metade 1:23:30 (3:58/km)</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-          {PACE_STRATEGY.map((s,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 12px", borderRadius:8, background: i >= 6 ? "#FFF5F5" : "#fafafa" }}>
-              <div style={{ fontSize:11, color:"#bbb", width:42, flexShrink:0, fontFamily:"'DM Mono',monospace" }}>km {s.km}</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:500, color: i>=6 ? "#FF3333" : "#111", width:44 }}>{s.pace}</div>
-              <div style={{ fontSize:11, color:"#FF922B", fontFamily:"'DM Mono',monospace", width:80 }}>{s.pw}</div>
-              <div style={{ fontSize:12, color:"#888" }}>{s.note}</div>
-            </div>
-          ))}
+        <div className="card-label">Fitness (CTL/ATL/TSB) — Últimos 90 dias</div>
+        <div className="page-sub" style={{ marginBottom:16 }}>Tendência real que sustenta as estimativas acima · CTL a partir do Relative Effort de cada atividade (Strava), ATL/TSB calculados por decaimento exponencial (Banister)</div>
+        <MiniLineChart
+          data={hist}
+          lines={[
+            { key:"ctl", color:"#2a78d6", width:2 },
+            { key:"atl", color:"#e34948", width:1.5, dash:"5 3" },
+            { key:"tsb", color:"#eda100", width:2 },
+          ]}
+          height={220}
+        />
+        <div style={{ display:"flex", gap:16, marginTop:8, fontSize:11, color:"var(--text-muted)" }}>
+          <span><span style={{color:"#2a78d6"}}>●</span> CTL (Fitness)</span>
+          <span><span style={{color:"#e34948"}}>●</span> ATL (Fadiga)</span>
+          <span><span style={{color:"#eda100"}}>●</span> TSB (Forma)</span>
         </div>
       </div>
+
       <div className="card">
-        <div className="card-label">Protocolo de Nutrição · Race Day</div>
-        <div style={{ fontSize:11, color:"#888", marginBottom:14 }}>~150–180g CHO total · Mistura glicose:frutose 2:1 · Sódio 500mg/h</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
-          {NUTRITION.map((n,i) => (
-            <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start", padding:"10px 0", borderBottom: i<NUTRITION.length-1 ? "1px solid #f5f5f5" : "none" }}>
-              <div style={{ background:"#f0f0f0", borderRadius:8, padding:"4px 10px", fontSize:11, fontWeight:700, color:"#111", fontFamily:"'DM Mono',monospace", minWidth:52, textAlign:"center", flexShrink:0 }}>{n.time}</div>
-              <div style={{ fontSize:16, flexShrink:0 }}>{n.icon}</div>
-              <div><div style={{ fontSize:13, fontWeight:600, color:"#111" }}>{n.action}</div><div style={{ fontSize:12, color:"#888", marginTop:1 }}>{n.detail}</div></div>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop:12, padding:"12px 14px", background:"#f8f8f6", borderRadius:10, fontSize:12, color:"#888", lineHeight:1.6 }}>
-          💧 <b style={{ color:"#111" }}>Hidratação:</b> 400–500ml/h esperado em Chicago (~10°C). Euidratação na manhã — urina clara. Não beber em excesso: risco de hiponatremia.
-        </div>
-      </div>
-      <div className="card" style={{ background:"#111", color:"#fff", border:"none" }}>
-        <div className="card-label" style={{ color:"#555" }}>Estratégia Mental · 4 Fases</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-          {[
-            { km:"0–10",   label:"Paciência",   desc:"Ignore o pelotão. Power é o chefe. Se parecer fácil — ótimo.", c:"#4DABF7" },
-            { km:"10–21",  label:"Ritmo",        desc:"Negative split começa aqui. 4:00/km sentido confortável.", c:"#94D82D" },
-            { km:"21–32",  label:"Comprometer",  desc:"Esta é a corrida. Gel+cafeína km 24. Pense só no próximo km.", c:"#FCC419" },
-            { km:"32–42",  label:"Sobreviver 🔥",desc:"Dor é normal. Diminua passada se necessário, não pare.", c:"#FF3333" },
-          ].map((f,i) => (
-            <div key={i} style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:f.c, width:44, paddingTop:2, flexShrink:0 }}>km {f.km}</div>
-              <div><div style={{ fontSize:13, fontWeight:700, color:f.c }}>{f.label}</div><div style={{ fontSize:12, color:"#888", marginTop:2, lineHeight:1.5 }}>{f.desc}</div></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PageLibrary() {
-  const [libCat, setLibCat] = useState(Object.keys(LIBRARY)[0]);
-  const [libOpen, setLibOpen] = useState(null);
-  const [libFilter, setLibFilter] = useState(0);
-  const cat = LIBRARY[libCat];
-
-  return (
-    <div className="page gap-14">
-      <div>
-        <div className="page-title">Biblioteca de Treinos</div>
-        <div className="page-sub">Sessões por tipo de estímulo · Threshold, Cruise Intervals, VO₂max, Strides, R-pace</div>
-      </div>
-
-      <div className="card" style={{ padding:0, overflow:"hidden" }}>
-        <div style={{ display:"flex", overflowX:"auto", borderBottom:"1px solid #eee" }}>
-          {Object.entries(LIBRARY).map(([k,c]) => (
-            <button key={k} onClick={() => { setLibCat(k); setLibOpen(null); setLibFilter(0); }} style={{
-              background: libCat===k ? c.color+"14" : "transparent",
-              border:"none", borderBottom: libCat===k ? `2px solid ${c.color}` : "2px solid transparent",
-              color: libCat===k ? c.color : "#888",
-              padding:"12px 16px", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
-            }}>
-              <span style={{ background:libCat===k?c.color+"22":"#f0f0f0", color:libCat===k?c.color:"#999", borderRadius:4, padding:"1px 6px", fontSize:10, marginRight:6, fontFamily:"'DM Mono',monospace" }}>{k}</span>
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ background:cat.color+"0D", borderBottom:`1px solid ${cat.color}22`, padding:"12px 20px" }}>
-          <div style={{ fontSize:10, color:cat.color, letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700, marginBottom:3 }}>{cat.zone}</div>
-          <div style={{ fontSize:12, color:"#666" }}>{cat.desc}</div>
-        </div>
-
-        <div style={{ padding:"12px 20px", display:"flex", gap:6, alignItems:"center", flexWrap:"wrap", borderBottom:"1px solid #f0f0f0" }}>
-          <span style={{ fontSize:10, color:"#aaa", fontWeight:700, letterSpacing:"0.08em" }}>DIFICULDADE</span>
-          {[0,1,2,3,4,5].map(d => (
-            <button key={d} onClick={()=>setLibFilter(d)} style={{
-              background: libFilter===d ? (d===0?"#111":DIFF_DOT[d]+"22") : "transparent",
-              border:`1px solid ${libFilter===d ? (d===0?"#111":DIFF_DOT[d]) : "#e5e5e5"}`,
-              color: libFilter===d ? (d===0?"#fff":DIFF_DOT[d]) : "#999",
-              borderRadius:20, padding:"3px 10px", fontSize:10, fontWeight:600, cursor:"pointer",
-            }}>{d===0?"Todos":DIFF_LABELS[d]}</button>
-          ))}
-        </div>
-
-        <div style={{ padding:"16px 20px 20px" }}>
-          {cat.items.filter(w => libFilter===0 || w.diff===libFilter).map(w => {
-            const isOpen = libOpen===w.tag;
-            return (
-              <div key={w.tag} style={{
-                background: isOpen ? cat.color+"08" : "#fff",
-                border:`1px solid ${isOpen ? cat.color+"44" : "#eee"}`,
-                borderRadius:10, marginBottom:10, overflow:"hidden",
-              }}>
-                <button onClick={()=>setLibOpen(isOpen?null:w.tag)} style={{
-                  width:"100%", background:"transparent", border:"none", padding:"13px 14px",
-                  display:"flex", alignItems:"center", gap:12, cursor:"pointer", textAlign:"left",
-                }}>
-                  <span style={{ background:cat.color+"1A", color:cat.color, borderRadius:5, padding:"2px 7px", fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", border:`1px solid ${cat.color}33`, flexShrink:0 }}>{w.tag}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:"#111" }}>{w.name}</div>
-                    <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>{w.when}</div>
-                  </div>
-                  <div style={{ display:"flex", gap:2, flexShrink:0 }}>
-                    {[1,2,3,4,5].map(i => <div key={i} style={{ width:6,height:6,borderRadius:"50%",background:i<=w.diff?DIFF_DOT[w.diff]:"#eee" }} />)}
-                  </div>
-                  <span style={{ color:cat.color, fontSize:13, transform:isOpen?"rotate(180deg)":"none", transition:"transform 0.2s", marginLeft:4 }}>▾</span>
-                </button>
-                {isOpen && (
-                  <div style={{ padding:"0 14px 14px" }}>
-                    <div style={{ height:1, background:"#f0f0f0", marginBottom:12 }} />
-                    <div style={{ marginBottom:12 }}>
-                      <div style={{ fontSize:10, color:"#aaa", letterSpacing:"0.1em", textTransform:"uppercase", fontWeight:700, marginBottom:8 }}>Estrutura</div>
-                      {w.steps.map((s,i) => (
-                        <div key={i} style={{ display:"flex", gap:9, marginBottom:5 }}>
-                          <div style={{ width:18,height:18,borderRadius:"50%",background:cat.color+"1A",border:`1px solid ${cat.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:cat.color,fontWeight:700,flexShrink:0,marginTop:1 }}>{i+1}</div>
-                          <div style={{ fontSize:12, color:"#555", lineHeight:1.5 }}>{s}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ background:cat.color+"0D", borderLeft:`3px solid ${cat.color}`, borderRadius:"0 8px 8px 0", padding:"8px 12px", marginBottom:8 }}>
-                      <div style={{ fontSize:9, color:cat.color, letterSpacing:"0.08em", textTransform:"uppercase", fontWeight:700, marginBottom:2 }}>Foco</div>
-                      <div style={{ fontSize:12, color:"#333" }}>{w.focus}</div>
-                    </div>
-                    <div style={{ background:"#f8f8f6", borderRadius:8, padding:"8px 12px" }}>
-                      <div style={{ fontSize:9, color:"#aaa", fontWeight:700, marginBottom:2 }}>💡 EXECUÇÃO</div>
-                      <div style={{ fontSize:11, color:"#666", lineHeight:1.5 }}>{w.tip}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="ref-grid">
+          <div>
+            <div className="card-label">Âncoras fisiológicas <span className="hint">referência manual</span></div>
+            <table className="lap-table">
+              <thead><tr><th>Métrica</th><th>Valor</th></tr></thead>
+              <tbody>
+                {[
+                  { l:"LT2 Pace",  v:"3:58/km" },
+                  { l:"LT2 Power", v:"393W" },
+                  { l:"LT2 HR",    v:"178 bpm" },
+                  { l:"Max HR",    v:"196 bpm" },
+                  { l:"VDOT",      v:String(VDOT) },
+                  { l:"TSB atual", v:String(Math.round(latestPmc.tsb)) },
+                ].map((a,i) => (
+                  <tr key={i}><td>{a.l}</td><td style={{ fontFamily:"'DM Mono',monospace", fontWeight:600 }}>{a.v}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div className="card-label">Referência: paces por zona</div>
+            <table className="lap-table">
+              <thead><tr><th>Zona</th><th>Pace</th><th>FC</th></tr></thead>
+              <tbody>
+                {ZONE_DEFS.map(z => (
+                  <tr key={z.zone}><td style={{ color:z.color, fontWeight:700 }}>{z.zone} · {z.label}</td><td style={{ fontFamily:"'DM Mono',monospace" }}>{z.pace}</td><td style={{ fontFamily:"'DM Mono',monospace" }}>{z.hr}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+
+      <div className="footnote">Estimativas próprias — Riegel (T2 = T1 × (D2/D1)^1.06) a partir do PR real de Meia Maratona (1:28:17), mais VDOT/LT2 como referência manual. Não vem de nenhum dispositivo Garmin; este dashboard só tem conector com o Strava.</div>
     </div>
   );
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const PAGES = [
-  { id:"overview", icon:"⬤", label:"Visão Geral",   component:PageOverview  },
-  { id:"fitness",  icon:"📈", label:"Fitness",       component:PageFitness   },
-  { id:"library",  icon:"📚", label:"Biblioteca",    component:PageLibrary   },
-  { id:"zones",    icon:"◉",  label:"Zonas",         component:PageZones     },
-  { id:"plan",     icon:"📅", label:"Fitness Proj",  component:PagePlan      },
-  { id:"projecao", icon:"🎯", label:"Estratégia",    component:PageProjecao  },
+  { id:"resumo",      label:"Resumo",              component:PageResumo      },
+  { id:"frequencia",  label:"Distribuição de FC",  component:PageFrequencia  },
+  { id:"predictions", label:"Predictions",         component:PagePredictions },
+  { id:"trainingLog", label:"Training Log",        component:PageTrainingLog },
 ];
 
 function App() {
-  const [page, setPage] = useState("overview");
+  const [page, setPage] = useState("resumo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -1501,54 +1123,39 @@ function App() {
   const latestPmc = pmc.length > 0 ? pmc[pmc.length - 1] : { ctl:0, atl:0, tsb:0 };
 
   if (loading) {
-    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#888" }}>Carregando dados do Supabase...</div>;
+    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--text-muted)" }}>Carregando dados do Supabase...</div>;
   }
   if (error) {
-    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#FF3333", padding:20, textAlign:"center" }}>Erro ao carregar dados: {error}</div>;
+    return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#e34948", padding:20, textAlign:"center" }}>Erro ao carregar dados: {error}</div>;
   }
 
   const pageInfo = PAGES.find(p => p.id === page) || PAGES[0];
   const Current = pageInfo.component;
-  const pageProps = page === "overview" ? { activities, latestPmc, daysOut, plannedWorkouts }
-                   : page === "fitness"  ? { pmc, latestPmc, plannedWorkouts }
-                   : page === "plan"     ? { pmc, plannedWorkouts, setPlannedWorkouts }
-                   : page === "zones"    ? { plannedWorkouts, activities }
+  const pageProps = page === "resumo"      ? { activities, latestPmc, daysOut, plannedWorkouts }
+                   : page === "frequencia" ? { activities }
+                   : page === "predictions"? { pmc, latestPmc }
+                   : page === "trainingLog"? { pmc, plannedWorkouts, setPlannedWorkouts }
                    : {};
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <div className="race-target">Performance Dashboard</div>
-          <div className="race-label">Chicago Marathon · Out 11</div>
-          <div className="race-days"><span>{daysOut}</span> dias · <span>{Math.ceil(daysOut/7)}</span> semanas</div>
+    <div className="wrap">
+      <header className="top">
+        <div className="title-block">
+          <div className="eyebrow">GPS → Chicago Marathon · 11 de outubro</div>
+          <h1>Performance Dashboard</h1>
+          <div className="race-days"><b>{daysOut}</b> dias · <b>{Math.ceil(daysOut/7)}</b> semanas para o race day</div>
         </div>
-        <nav className="sidebar-nav">
-          {PAGES.map(p => (
-            <button key={p.id} className={`nav-item ${page===p.id?"active":""}`} onClick={() => setPage(p.id)}>
-              <span className="nav-icon">{p.icon}</span>{p.label}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <p>GPS · VDOT 58 · LT2 393W<br/>Stryd · Garmin · Strava<br/>Dados ao vivo via Supabase</p>
-        </div>
-      </aside>
+      </header>
 
-      <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
-        <header className="mobile-header">
-          <div className="logo">2:48:00</div>
-          <div style={{ fontSize:11, color:"#888" }}>Chicago · {daysOut}d</div>
-        </header>
-        <div className="mobile-tabs">
-          {PAGES.map(p => (
-            <button key={p.id} className={`mobile-tab ${page===p.id?"active":""}`} onClick={() => setPage(p.id)}>{p.label}</button>
-          ))}
-        </div>
-        <main className="main-content">
-          <Current {...pageProps} />
-        </main>
-      </div>
+      <nav className="tab-nav">
+        {PAGES.map(p => (
+          <button key={p.id} className={`tab-btn ${page===p.id?"active":""}`} onClick={() => setPage(p.id)}>{p.label}</button>
+        ))}
+      </nav>
+
+      <Current {...pageProps} />
+
+      <div className="footer-note">Dados reais sincronizados do Strava via Supabase · treinos planejados salvos neste navegador (localStorage)</div>
     </div>
   );
 }
