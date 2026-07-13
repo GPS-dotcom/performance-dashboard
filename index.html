@@ -594,11 +594,36 @@ function PageResumo({ activities, latestPmc, daysOut, plannedWorkouts }) {
   const z3Delta = deltaLabel(curr7.z3Pct, prev7.z3Pct);
 
   // Comparação com as últimas sessões do mesmo tipo — real, calculado a partir do histórico sincronizado
-  const sameTypeRecent = last ? activities.filter(a => a !== last && classifyActivity(a).label === lastType.label).slice(0,4) : [];
-  const sameTypeAvgHr = sameTypeRecent.filter(a=>a.average_heartrate).length
-    ? sameTypeRecent.reduce((s,a)=>s+(a.average_heartrate||0),0) / sameTypeRecent.filter(a=>a.average_heartrate).length
-    : null;
-  const hrDiff = (sameTypeAvgHr && last?.average_heartrate) ? Math.round(last.average_heartrate - sameTypeAvgHr) : null;
+  function avgOf(arr, getter) {
+    const vals = arr.map(getter).filter(v => v!=null);
+    return vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : null;
+  }
+  function secPerKm(a) { return a.distance_m ? a.moving_time_s/(a.distance_m/1000) : null; }
+
+  const sameTypeRecent = last ? activities.filter(a => a !== last && classifyActivity(a).label === lastType.label).slice(0,5) : [];
+  const mostRecentSameType = sameTypeRecent[0] || null;
+  const sameTypeAvgHr = avgOf(sameTypeRecent, a=>a.average_heartrate);
+  const sameTypeAvgRtss = avgOf(sameTypeRecent, a=>a.rtss);
+  const sameTypeAvgPaceSec = avgOf(sameTypeRecent, secPerKm);
+  const hrDiff = (sameTypeAvgHr!=null && last?.average_heartrate) ? Math.round(last.average_heartrate - sameTypeAvgHr) : null;
+  const rtssDiff = (sameTypeAvgRtss!=null && last?.rtss) ? Math.round(last.rtss - sameTypeAvgRtss) : null;
+  const lastPaceSec = secPerKm(last||{});
+  const paceDiffSec = (sameTypeAvgPaceSec!=null && lastPaceSec!=null) ? Math.round(lastPaceSec - sameTypeAvgPaceSec) : null;
+
+  const comparisonParts = [];
+  if (hrDiff!=null) comparisonParts.push(`FC ${Math.abs(hrDiff)}bpm ${hrDiff>0?"mais alta":"mais baixa"}`);
+  if (paceDiffSec!=null) comparisonParts.push(`pace ${Math.abs(paceDiffSec)}s/km ${paceDiffSec<0?"mais rápido":"mais lento"}`);
+  if (rtssDiff!=null) comparisonParts.push(`rTSS ${Math.abs(rtssDiff)} ${rtssDiff>0?"acima":"abaixo"} da média`);
+  const comparisonText = comparisonParts.join(", ");
+  const comparisonTakeaway = (hrDiff!=null && paceDiffSec!=null && hrDiff<0 && paceDiffSec<=0)
+    ? "mesmo esforço, custo fisiológico menor — sinal de adaptação."
+    : (hrDiff!=null && hrDiff>3 && (paceDiffSec==null || paceDiffSec>=0))
+      ? "vale observar se isso virar padrão nas próximas sessões."
+      : "dentro da variação normal pra esse tipo de treino.";
+
+  // Distribuição de zona do último treino, ordenada da mais dominante pra menos — real (zone_minutes/streams)
+  const zoneBreakdown = exec ? ZONE_DEFS.map(z => ({ zone:z.zone, label:z.label, pct: exec.zonePct[z.zone]||0 })).filter(z=>z.pct>=1).sort((a,b)=>b.pct-a.pct) : [];
+  const zoneBreakdownText = zoneBreakdown.map(z => `${z.pct.toFixed(0)}% em ${z.zone} (${z.label})`).join(", ");
 
   let rows = activities.filter(a => !search || (a.name||"").toLowerCase().includes(search.toLowerCase()) || (a.type||"").toLowerCase().includes(search.toLowerCase()));
   rows = rows.slice().sort((a,b) => {
@@ -652,27 +677,40 @@ function PageResumo({ activities, latestPmc, daysOut, plannedWorkouts }) {
           {exec && (
             <div className="analysis">
               <div className="analysis-label">Análise</div>
+
               {exec.hasPlan ? (
-                <>
-                  <p>
-                    Esse treino ficou <strong>{exec.verdict.toLowerCase()}</strong>: rTSS real de <strong>{Math.round(exec.actualRtss)}</strong> contra
-                    {" "}<strong>{Math.round(exec.planRtss)}</strong> planejado{exec.ratio!=null && ` (${Math.round(exec.ratio*100)}% do previsto)`}.
-                    {exec.targetZone && exec.targetZonePct!=null && ` Passou ${exec.targetZonePct.toFixed(0)}% do tempo na zona alvo (${exec.targetZone}).`}
-                  </p>
-                  {hrDiff!=null && (
-                    <p>Comparado às últimas {sameTypeRecent.length} sessões de <strong>{lastType.label}</strong>, a FC média ficou
-                      {" "}<strong>{Math.abs(hrDiff)}bpm {hrDiff>0?"mais alta":"mais baixa"}</strong> — {hrDiff<0 ? "sinal de menor custo fisiológico pro mesmo tipo de esforço." : "vale observar se isso virar padrão nas próximas sessões."}
-                    </p>
-                  )}
-                </>
+                <p>
+                  Esse treino ficou <strong>{exec.verdict.toLowerCase()}</strong>: rTSS real de <strong>{Math.round(exec.actualRtss)}</strong> contra
+                  {" "}<strong>{Math.round(exec.planRtss)}</strong> planejado{exec.ratio!=null && ` (${Math.round(exec.ratio*100)}% do previsto)`},
+                  em <strong>{fmtDuration(last.moving_time_s)}</strong> a <strong>{paceStr(last.distance_m, last.moving_time_s)}/km</strong>.
+                  {exec.targetZone && exec.targetZonePct!=null && ` Passou ${exec.targetZonePct.toFixed(0)}% do tempo na zona alvo (${exec.targetZone}).`}
+                </p>
               ) : (
-                <>
-                  <p>Sem treino planejado nesse dia no calendário (Training Log) — não dá pra comparar com o plano, mas dá pra ver a distribuição de zona abaixo.</p>
-                  {hrDiff!=null && (
-                    <p>Comparado às últimas {sameTypeRecent.length} sessões de <strong>{lastType.label}</strong>, a FC média ficou <strong>{Math.abs(hrDiff)}bpm {hrDiff>0?"mais alta":"mais baixa"}</strong>.</p>
-                  )}
-                </>
+                <p>
+                  Sem treino planejado nesse dia no calendário (Training Log) — não dá pra comparar com o plano.
+                  Foram <strong>{fmtDuration(last.moving_time_s)}</strong> a <strong>{paceStr(last.distance_m, last.moving_time_s)}/km</strong>, rTSS {Math.round(last.rtss||0)}.
+                </p>
               )}
+
+              {zoneBreakdown.length > 0 && (
+                <p>Distribuição de zona: <strong>{zoneBreakdownText}</strong>.</p>
+              )}
+
+              {mostRecentSameType && comparisonParts.length > 0 && (
+                <p>
+                  Comparado à sua sessão mais recente de <strong>{lastType.label}</strong> ({mostRecentSameType.start_date.slice(0,10)}) e à média das últimas {sameTypeRecent.length}:
+                  {" "}<strong>{comparisonText}</strong> — {comparisonTakeaway}
+                </p>
+              )}
+
+              {z3Delta && (
+                <div className="analysis-note">
+                  📌 Zona cinza (Z3) nos últimos 7 dias: <strong>{curr7.z3Pct.toFixed(0)}%</strong> do tempo total ({z3Delta.text}) — {z3Delta.dir==="up"
+                    ? "vale observar se os treinos fáceis estão saindo fáceis de verdade, pra não acumular tempo demais em zona intermediária."
+                    : "sinal de treinos bem polarizados: fácil de verdade, forte de verdade."}
+                </div>
+              )}
+
               {exec.totalZoneMin > 0 && <ZoneTimeRow label="Real" totalMin={exec.totalZoneMin} pct={exec.zonePct} empty="" />}
             </div>
           )}
