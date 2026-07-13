@@ -336,20 +336,56 @@ const WEEKS = [
   { n:15, phase:"Race",      dates:"Out 4–11",     vol:22,  quality:["Strides","Easy shakeout"],              long:0,  status:"future"  },
 ];
 
-// ─── PREDICTIONS (estimativa própria via Riegel, não vem do Garmin) ──────────
-// Âncora real: Meia Maratona RJ 1:28:17 (PR do atleta). Riegel extrapola pra
-// outras distâncias: T2 = T1 * (D2/D1)^1.06. VDOT e LT2 seguem sendo as
-// referências manuais já usadas no resto do app (não há conector Garmin).
-const ANCHOR_KM = 21.0975, ANCHOR_SEC = 1*3600 + 28*60 + 17;
-function riegelPredictSec(targetKm) {
-  return ANCHOR_SEC * Math.pow(targetKm / ANCHOR_KM, 1.06);
+// ─── PREDICTIONS (PRs reais do Strava — best_efforts, não vem do Garmin) ─────
+// Cada atividade de corrida sincronizada carrega best_efforts nativo do
+// Strava (5K/10K/15K/10mi/20K/Meia — calculado pelo próprio Strava a partir
+// dos streams, via Edge Function). Pegamos o melhor tempo real já visto em
+// qualquer atividade sincronizada. Maratona não é um best_effort padrão do
+// Strava, e distâncias sem PR real ainda usam Riegel a partir do melhor
+// esforço real disponível (T2 = T1 × (D2/D1)^1.06), preferindo a âncora mais
+// longa (extrapola com menos erro que uma âncora curta).
+const BEST_EFFORT_DISTANCES = [
+  { key:"5k",            km:5,       label:"5K" },
+  { key:"10k",           km:10,      label:"10K" },
+  { key:"15k",           km:15,      label:"15K" },
+  { key:"10mile",        km:16.0934, label:"10 Milhas" },
+  { key:"20k",           km:20,      label:"20K" },
+  { key:"half_marathon", km:21.0975, label:"Meia" },
+];
+function riegelPredictSec(fromSec, fromKm, toKm) {
+  return fromSec * Math.pow(toKm / fromKm, 1.06);
 }
-const RACE_PREDICTIONS = [
-  { label:"5K",       km:5       },
-  { label:"10K",      km:10      },
-  { label:"Meia",     km:ANCHOR_KM, isAnchor:true },
-  { label:"Maratona", km:42.195  },
-].map(p => ({ ...p, sec: p.isAnchor ? ANCHOR_SEC : riegelPredictSec(p.km) }));
+function realBestEfforts(activities) {
+  const bests = {};
+  activities.forEach(a => {
+    const be = a.best_efforts;
+    if (!be) return;
+    BEST_EFFORT_DISTANCES.forEach(d => {
+      const v = be[d.key];
+      if (v != null && (bests[d.key] == null || v < bests[d.key])) bests[d.key] = v;
+    });
+  });
+  return bests;
+}
+function buildRacePredictions(activities) {
+  const bests = realBestEfforts(activities);
+  const anchorOrder = ["half_marathon","20k","15k","10mile","10k","5k"];
+  const anchorKey = anchorOrder.find(k => bests[k] != null);
+  const anchorDef = anchorKey ? BEST_EFFORT_DISTANCES.find(d => d.key===anchorKey) : null;
+  const anchor = anchorDef ? { km:anchorDef.km, sec:bests[anchorKey], label:anchorDef.label } : null;
+
+  const rows = [
+    { label:"5K",       km:5,       key:"5k" },
+    { label:"10K",      km:10,      key:"10k" },
+    { label:"Meia",     km:21.0975, key:"half_marathon" },
+    { label:"Maratona", km:42.195,  key:null },
+  ];
+  return rows.map(r => {
+    if (r.key && bests[r.key] != null) return { ...r, sec:bests[r.key], isReal:true };
+    if (anchor) return { ...r, sec:riegelPredictSec(anchor.sec, anchor.km, r.km), isReal:false, anchorLabel:anchor.label };
+    return { ...r, sec:null, isReal:false };
+  });
+}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -1015,21 +1051,32 @@ function PageTrainingLog({ pmc, plannedWorkouts, setPlannedWorkouts }) {
   );
 }
 
-function PagePredictions({ pmc, latestPmc }) {
+function PagePredictions({ pmc, latestPmc, activities }) {
   const hist = pmc.slice(-90).map(p => ({ x: p.date.slice(5), ctl:p.ctl, atl:p.atl, tsb:p.tsb }));
+  const predictions = buildRacePredictions(activities);
+  const hasAnyReal = predictions.some(p => p.isReal);
 
   return (
     <div className="page gap-14">
       <div>
         <div className="page-title">Predictions</div>
-        <div className="page-sub">Estimativa própria (Riegel a partir do PR real + refs manuais) · sem conector Garmin, não é nativo do Garmin Connect</div>
+        <div className="page-sub">PRs reais do Strava (best efforts) + Riegel pras distâncias sem PR ainda · sem conector Garmin, não é nativo do Garmin Connect</div>
       </div>
 
       <div className="kpi-row">
-        {RACE_PREDICTIONS.map(p => (
-          <Kpi key={p.label} label={`${p.label} estimado`} value={fmtDuration(p.sec)} delta={p.isAnchor ? "PR real (Meia RJ)" : "Riegel a partir da Meia"} deltaDir="up" />
+        {predictions.map(p => (
+          <Kpi
+            key={p.label}
+            label={`${p.label} ${p.isReal ? "(PR real)" : "estimado"}`}
+            value={p.sec!=null ? fmtDuration(p.sec) : "–"}
+            delta={p.isReal ? "Best effort real (Strava)" : p.anchorLabel ? `Riegel a partir do seu ${p.anchorLabel}` : "Aguardando sync"}
+            deltaDir="up"
+          />
         ))}
       </div>
+      {!hasAnyReal && (
+        <div className="footnote">Ainda não há best efforts sincronizados do Strava — clique em "Atualizar treinos" no topo. Até lá, essas distâncias ficam vazias (nada aqui é inventado).</div>
+      )}
 
       <div className="card">
         <div className="card-label">Fitness (CTL/ATL/TSB) — Últimos 90 dias</div>
@@ -1084,7 +1131,7 @@ function PagePredictions({ pmc, latestPmc }) {
         </div>
       </div>
 
-      <div className="footnote">Estimativas próprias — Riegel (T2 = T1 × (D2/D1)^1.06) a partir do PR real de Meia Maratona (1:28:17), mais VDOT/LT2 como referência manual. Não vem de nenhum dispositivo Garmin; este dashboard só tem conector com o Strava.</div>
+      <div className="footnote">5K/10K/Meia são o melhor best effort real já registrado pelo Strava em qualquer atividade sincronizada. Maratona (e distâncias sem PR ainda) usam Riegel (T2 = T1 × (D2/D1)^1.06) a partir do seu melhor esforço real disponível. VDOT/LT2 continuam sendo referência manual. Não vem de nenhum dispositivo Garmin; este dashboard só tem conector com o Strava.</div>
     </div>
   );
 }
@@ -1115,7 +1162,7 @@ function App() {
   }, [plannedWorkouts]);
 
   async function loadData() {
-    const { data: acts, error: e1 } = await sb.from("strava_activities").select("*").order("start_date", { ascending: false }).limit(30);
+    const { data: acts, error: e1 } = await sb.from("strava_activities").select("*").order("start_date", { ascending: false }).limit(200);
     if (e1) throw e1;
     const { data: pmcData, error: e2 } = await sb.from("daily_pmc").select("*").order("date", { ascending: true });
     if (e2) throw e2;
@@ -1162,7 +1209,7 @@ function App() {
   const Current = pageInfo.component;
   const pageProps = page === "resumo"      ? { activities, latestPmc, daysOut, plannedWorkouts }
                    : page === "frequencia" ? { activities }
-                   : page === "predictions"? { pmc, latestPmc }
+                   : page === "predictions"? { pmc, latestPmc, activities }
                    : page === "trainingLog"? { pmc, plannedWorkouts, setPlannedWorkouts }
                    : {};
 
