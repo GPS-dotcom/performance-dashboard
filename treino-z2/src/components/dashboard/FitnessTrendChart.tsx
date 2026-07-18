@@ -1,4 +1,4 @@
-import type { MetricsSnapshot } from "../../domain/types";
+import type { MetricsSnapshot } from "../../types";
 
 interface Series {
   key: keyof Pick<MetricsSnapshot, "ctl" | "atl" | "tsb">;

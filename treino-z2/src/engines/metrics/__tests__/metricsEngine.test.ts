@@ -6,7 +6,7 @@ import {
   latestSnapshot,
   paceMinPerKm,
 } from "../metricsEngine";
-import type { Activity, MetricsSnapshot } from "../types";
+import type { Activity, MetricsSnapshot } from "../../../types";
 
 function makeActivity(overrides: Partial<Activity> = {}): Activity {
   return {

@@ -2,7 +2,7 @@
 // Per Performance.MD: "It performs calculations only. It does not interpret,
 // coach or make recommendations" — those belong to the (future) Intelligence Engine.
 
-import type { Activity, MetricsSnapshot, ZoneDefinition, ZoneKey, ZoneMinutes } from "./types";
+import type { Activity, MetricsSnapshot, ZoneDefinition, ZoneKey, ZoneMinutes } from "../../types";
 
 export const DEFAULT_ZONES: ZoneDefinition[] = [
   { zone: "Z1", label: "Recovery", hrMax: 127, powerMax: 315, color: "#2a78d6" },

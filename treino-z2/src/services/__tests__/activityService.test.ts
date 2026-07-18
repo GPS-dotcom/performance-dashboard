@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapActivityRow, mapSnapshotRow } from "../activityRepository";
+import { mapActivityRow, mapSnapshotRow } from "../activityService";
 
 describe("mapActivityRow", () => {
   it("maps snake_case storage columns to domain field names", () => {

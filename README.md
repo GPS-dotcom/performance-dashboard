@@ -28,7 +28,7 @@ npm run build
 
 It currently reads from the same `strava_activities` / `daily_pmc` tables
 as the legacy dashboard (via an adapter in
-`src/infrastructure/activityRepository.ts`) so it works against real data
+`src/services/activityService.ts`) so it works against real data
 immediately. `supabase/migrations/0001_treino_z2_core_schema.sql` defines
 the target multi-athlete schema (Athlete/Activity/Workout/Metrics
 Snapshot/Insight, with Row Level Security) for when this grows beyond one

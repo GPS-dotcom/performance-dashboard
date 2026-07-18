@@ -1,12 +1,6 @@
-import type { Activity } from "../../domain/types";
-import { paceMinPerKm } from "../../domain/metricsEngine";
-
-function formatPace(minPerKm: number | null): string {
-  if (minPerKm == null) return "–";
-  const min = Math.floor(minPerKm);
-  const sec = Math.round((minPerKm - min) * 60);
-  return `${min}:${String(sec).padStart(2, "0")}/km`;
-}
+import type { Activity } from "../../types";
+import { paceMinPerKm } from "../../engines/metrics/metricsEngine";
+import { formatPace } from "../../utils/format";
 
 export function ActivityTable({ activities }: { activities: Activity[] }) {
   if (activities.length === 0) {

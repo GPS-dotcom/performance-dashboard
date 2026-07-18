@@ -1,5 +1,5 @@
-import type { Activity, MetricsSnapshot } from "../domain/types";
-import { getSupabase } from "./supabaseClient";
+import type { Activity, MetricsSnapshot } from "../types";
+import { getSupabase } from "../api/supabaseClient";
 
 // Row shapes as stored today in the existing `strava_activities` / `daily_pmc`
 // tables (populated by the Strava sync edge function). Mapping them into the
