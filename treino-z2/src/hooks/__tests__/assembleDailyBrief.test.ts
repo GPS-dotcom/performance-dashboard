@@ -101,4 +101,45 @@ describe("assembleDailyBrief", () => {
     expect(result.recoveryTime).not.toBeNull();
     expect(result.recoveryTime!.value!.daysUntilRecovered).toBeGreaterThan(0);
   });
+
+  it("ignores unrecognized best-effort distance keys and keeps the fastest recognized one as the PR", () => {
+    const activities = [
+      makeActivity({ id: "a1", startDate: "2026-07-10", bestEfforts: { "5k": 1200, ultramarathon: 99999 } }), // "ultramarathon" isn't a known distance
+      makeActivity({ id: "a2", startDate: "2026-07-12", bestEfforts: { "5k": 1300, ultramarathon: 100500 } }), // slower on every key -- not a new PR
+    ];
+    const result = assembleDailyBrief(activities, [], null, "2026-07-18");
+
+    const fiveK = result.racePredictions.find((p) => p.label === "5K")!;
+    expect(fiveK.result.value!.predictedTimeSec).toBe(1200);
+    expect(result.timelineEvents.find((e) => e.date === "2026-07-10")!.kind).toBe("personal_record");
+    expect(result.timelineEvents.find((e) => e.date === "2026-07-12")!.kind).toBe("activity");
+  });
+
+  it("flags only the faster effort as the PR when the same distance appears twice", () => {
+    const activities = [
+      makeActivity({ id: "a1", startDate: "2026-07-10", bestEfforts: { "5k": 1200 } }),
+      makeActivity({ id: "a2", startDate: "2026-07-12", bestEfforts: { "5k": 1300 } }), // slower -- not the PR holder
+    ];
+    const result = assembleDailyBrief(activities, [], null, "2026-07-18");
+    expect(result.timelineEvents.find((e) => e.date === "2026-07-10")!.kind).toBe("personal_record");
+    expect(result.timelineEvents.find((e) => e.date === "2026-07-12")!.kind).toBe("activity");
+  });
+
+  it("leaves the timeline description blank when an activity has no distance", () => {
+    const activities = [makeActivity({ id: "a1", distanceM: null })];
+    const result = assembleDailyBrief(activities, [], null, "2026-07-18");
+    expect(result.timelineEvents[0].description).toBe("");
+  });
+
+  it("raises a rapid_performance_drop alert on a high-confidence declining CTL trend", () => {
+    const history = metricsSeries(Array.from({ length: 20 }, (_, i) => 80 - i * 2)); // strong, clean decline
+    const result = assembleDailyBrief([], history, null, "2026-06-20");
+    expect(result.brief.warnings.some((w) => w.kind === "rapid_performance_drop")).toBe(true);
+  });
+
+  it("detects a CTL plateau when the recent window has stopped moving", () => {
+    const history = metricsSeries(Array.from({ length: 20 }, () => 60)); // perfectly flat
+    const result = assembleDailyBrief([], history, null, "2026-06-20");
+    expect(result.insights.some((i) => i.kind === "plateau")).toBe(true);
+  });
 });

@@ -60,3 +60,54 @@ it("retry() re-runs the fetch and can recover from an error", async () => {
   await waitFor(() => expect(result.current.state.status).toBe("ready"));
   expect(fetchRecentActivities).toHaveBeenCalledTimes(2);
 });
+
+it("stringifies a non-Error rejection instead of crashing", async () => {
+  fetchRecentActivities.mockRejectedValue("string rejection, not an Error");
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+
+  const { result } = renderHook(() => useDailyBrief());
+
+  await waitFor(() => expect(result.current.state.status).toBe("error"));
+  expect(result.current.state).toEqual({ status: "error", message: "string rejection, not an Error" });
+});
+
+it("does not update state after the component unmounts mid-fetch", async () => {
+  let resolveActivities!: (activities: Activity[]) => void;
+  fetchRecentActivities.mockReturnValue(new Promise((resolve) => (resolveActivities = resolve)));
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const { result, unmount } = renderHook(() => useDailyBrief());
+  expect(result.current.state).toEqual({ status: "loading" });
+
+  unmount();
+  await act(async () => {
+    resolveActivities([]);
+    await Promise.resolve();
+  });
+
+  expect(errorSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
+});
+
+it("does not update state after the component unmounts mid-fetch, even when the fetch then rejects", async () => {
+  let rejectActivities!: (err: unknown) => void;
+  fetchRecentActivities.mockReturnValue(new Promise((_resolve, reject) => (rejectActivities = reject)));
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const { result, unmount } = renderHook(() => useDailyBrief());
+  expect(result.current.state).toEqual({ status: "loading" });
+
+  unmount();
+  await act(async () => {
+    rejectActivities(new Error("network down"));
+    await Promise.resolve();
+  });
+
+  expect(errorSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
+});
