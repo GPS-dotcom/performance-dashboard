@@ -1,4 +1,4 @@
-import type { TrainingLoadPoint } from "../../engines/metrics";
+import type { TrainingLoadPoint } from "../../metrics";
 import { Card } from "../ui/Card";
 import { FitnessTrendChart } from "./FitnessTrendChart";
 

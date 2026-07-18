@@ -1,4 +1,4 @@
-import { metricResult, unavailableMetric, type MetricResult } from "../metrics";
+import { metricResult, unavailableMetric, type MetricResult } from "../../metrics";
 import type { MetricSeriesPoint } from "./types";
 
 export interface ThresholdProjection {

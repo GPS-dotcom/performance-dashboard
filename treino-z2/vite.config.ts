@@ -49,6 +49,8 @@ export default defineConfig({
         'src/engines/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/hooks/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/utils/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        // Metrics Engine coverage floor, per the explicit request that created it.
+        'src/metrics/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/components/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },

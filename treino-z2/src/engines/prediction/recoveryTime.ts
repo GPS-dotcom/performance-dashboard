@@ -1,4 +1,4 @@
-import { ATL_TIME_CONSTANT_DAYS, metricResult, unavailableMetric, type MetricResult } from "../metrics";
+import { ATL_TIME_CONSTANT_DAYS, metricResult, unavailableMetric, type MetricResult } from "../../metrics";
 
 export interface RecoveryTimePrediction {
   daysUntilRecovered: number;

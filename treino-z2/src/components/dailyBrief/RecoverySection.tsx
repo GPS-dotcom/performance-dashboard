@@ -1,4 +1,4 @@
-import type { MetricResult } from "../../engines/metrics";
+import type { MetricResult } from "../../metrics";
 import type { Recommendation } from "../../engines/coach";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";

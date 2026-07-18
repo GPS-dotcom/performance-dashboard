@@ -1,5 +1,5 @@
-import { calculateFitnessScore, calculateRecoveryScore } from "../engines/metrics";
-import type { TrainingLoadPoint } from "../engines/metrics";
+import { calculateFitnessScore, calculateRecoveryScore } from "../metrics";
+import type { TrainingLoadPoint } from "../metrics";
 import { detectPlateau, detectTrend } from "../engines/intelligence";
 import type { Insight, MetricPolarity, MetricSeriesPoint, TrendResult } from "../engines/intelligence";
 import {
@@ -13,7 +13,7 @@ import {
 import type { BestEffort, RacePrediction } from "../engines/prediction";
 import { generateDailyBrief, recommendRecovery } from "../engines/coach";
 import type { DailyBrief, Recommendation, TrendDirection } from "../engines/coach";
-import type { MetricResult } from "../engines/metrics";
+import type { MetricResult } from "../metrics";
 import type { Activity, MetricsSnapshot } from "../types";
 import type { UpcomingGoal } from "../services/goalService";
 

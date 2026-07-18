@@ -1,4 +1,4 @@
-import type { MetricResult } from "../../engines/metrics";
+import type { MetricResult } from "../../metrics";
 import type { RacePrediction } from "../../engines/prediction";
 import { formatDuration } from "../../utils/format";
 import { Card } from "../ui/Card";

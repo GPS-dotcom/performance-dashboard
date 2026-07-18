@@ -1,4 +1,4 @@
-import { metricResult, unavailableMetric, type MetricResult } from "../metrics";
+import { metricResult, unavailableMetric, type MetricResult } from "../../metrics";
 
 export interface InjuryRiskPrediction {
   acwr: number;

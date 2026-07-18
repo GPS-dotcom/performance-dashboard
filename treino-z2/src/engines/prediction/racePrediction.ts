@@ -1,4 +1,4 @@
-import { metricResult, unavailableMetric, type MetricResult } from "../metrics";
+import { metricResult, unavailableMetric, type MetricResult } from "../../metrics";
 import type { BestEffort } from "./types";
 
 export const RACE_DISTANCES_KM = {
