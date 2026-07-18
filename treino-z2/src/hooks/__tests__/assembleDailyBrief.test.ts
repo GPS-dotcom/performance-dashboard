@@ -140,6 +140,6 @@ describe("assembleDailyBrief", () => {
   it("detects a CTL plateau when the recent window has stopped moving", () => {
     const history = metricsSeries(Array.from({ length: 20 }, () => 60)); // perfectly flat
     const result = assembleDailyBrief([], history, null, "2026-06-20");
-    expect(result.insights.some((i) => i.kind === "plateau")).toBe(true);
+    expect(result.insights.some((i) => i.id.includes("plateau"))).toBe(true);
   });
 });

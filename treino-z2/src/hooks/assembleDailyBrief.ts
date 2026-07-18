@@ -1,7 +1,7 @@
 import { calculateFitnessScore, calculateRecoveryScore } from "../metrics";
 import type { TrainingLoadPoint } from "../metrics";
-import { detectPlateau, detectTrend } from "../engines/intelligence";
-import type { Insight, MetricPolarity, MetricSeriesPoint, TrendResult } from "../engines/intelligence";
+import { buildTrendInsight, classifySeries, detectStagnation } from "../intelligence";
+import type { Insight, MetricPolarity, MetricSeriesPoint, TrendClassification } from "../intelligence";
 import {
   predict10K,
   predict5K,
@@ -83,27 +83,27 @@ function deriveTimeline(activities: Activity[]): TimelineEvent[] {
 
 /**
  * Raw direction (did the number go up or down?) rather than a
- * good/bad-judged one: always calls detectTrend with "higher_is_better"
+ * good/bad-judged one: classifies the series with "higher_is_better"
  * polarity purely to get a slope sign, then relabels "improving"/
  * "declining" back to "increasing"/"decreasing" -- Coach Engine's
  * TrainingSignals wants the raw fact (e.g. "ATL increased"), since its
  * own rule cascade is what decides whether that's good or bad.
  */
-function rawDirection(metricName: string, series: MetricSeriesPoint[]): TrendDirection | null {
-  return rawDirectionFromTrend(detectTrend(metricName, series, "higher_is_better"), "higher_is_better");
+function rawDirection(series: MetricSeriesPoint[]): TrendDirection | null {
+  return rawDirectionFromTrend(classifySeries(series, "higher_is_better"), "higher_is_better");
 }
 
 /**
- * Same raw fact as rawDirection, derived from a TrendResult that was
- * already computed for some other polarity, instead of paying for a
- * second detectTrend call (sort + linear regression) over the same
+ * Same raw fact as rawDirection, derived from a TrendClassification that
+ * was already computed for some other polarity, instead of paying for a
+ * second classifySeries call (sort + linear regression) over the same
  * series. `direction = (polarity === "higher_is_better") === rising ?
- * "improving" : "declining"` is detectTrend's own labeling rule -- this
- * inverts it algebraically to recover `rising`, so the result is
- * identical to calling detectTrend a second time with
+ * "improving" : "declining"` is classifySeries' own labeling rule --
+ * this inverts it algebraically to recover `rising`, so the result is
+ * identical to classifying the series a second time with
  * "higher_is_better", just without redoing the regression.
  */
-export function rawDirectionFromTrend(trend: TrendResult | null, polarity: MetricPolarity): TrendDirection | null {
+export function rawDirectionFromTrend(trend: TrendClassification | null, polarity: MetricPolarity): TrendDirection | null {
   if (!trend) return null;
   if (trend.direction === "stable") return "stable";
   const higherIsBetter = polarity === "higher_is_better";
@@ -142,10 +142,11 @@ export function assembleDailyBrief(
 
   // Computed once with "lower_is_better" (the polarity its Insight needs)
   // and reused for atlTrend below via rawDirectionFromTrend, instead of
-  // running detectTrend over the same atlSeries twice.
-  const atlTrendInsight = detectTrend("Fatigue (ATL)", atlSeries, "lower_is_better");
-  const atlTrend = rawDirectionFromTrend(atlTrendInsight, "lower_is_better");
-  const recoveryScoreTrend = rawDirection("Recovery Score", recoveryScoreSeries);
+  // running classifySeries over the same atlSeries twice.
+  const atlClassification = classifySeries(atlSeries, "lower_is_better");
+  const atlTrendInsight = atlClassification ? buildTrendInsight("Fatigue (ATL)", "atl", atlClassification, "training_load", today) : null;
+  const atlTrend = rawDirectionFromTrend(atlClassification, "lower_is_better");
+  const recoveryScoreTrend = rawDirection(recoveryScoreSeries);
 
   const injuryRiskResult = ctl != null && atl != null ? predictInjuryRisk(ctl, atl) : null;
   const injuryRiskLevel = injuryRiskResult?.value?.riskLevel ?? null;
@@ -153,16 +154,18 @@ export function assembleDailyBrief(
 
   const recoveryTime = ctl != null && atl != null ? predictRecoveryTime(ctl, atl) : null;
 
-  const ctlTrend = detectTrend("Fitness (CTL)", ctlSeries, "higher_is_better");
-  const performanceTrendDeclining = ctlTrend != null && ctlTrend.direction === "declining" && ctlTrend.confidence > 0.5;
+  // Same single-computation-per-series pattern as ATL above.
+  const ctlClassification = classifySeries(ctlSeries, "higher_is_better");
+  const ctlTrendInsight = ctlClassification ? buildTrendInsight("Fitness", "ctl", ctlClassification, "fitness", today) : null;
+  const performanceTrendDeclining = ctlClassification != null && ctlClassification.direction === "declining" && ctlClassification.confidence > 0.5;
 
   const insights: Insight[] = [];
-  if (ctlTrend) insights.push(ctlTrend);
+  if (ctlTrendInsight) insights.push(ctlTrendInsight);
   if (atlTrendInsight) insights.push(atlTrendInsight);
-  const ctlPlateau = detectPlateau("Fitness (CTL)", ctlSeries);
+  const ctlPlateau = detectStagnation("Fitness", "ctl", ctlSeries, "fitness", today);
   if (ctlPlateau) insights.push(ctlPlateau);
 
-  const keyInsightSummaries = insights.slice(0, 3).map((insight) => insight.explanation);
+  const keyInsightSummaries = insights.slice(0, 3).map((insight) => insight.description);
 
   const upcomingRace = upcomingGoal ? { name: upcomingGoal.label ?? upcomingGoal.kind, date: upcomingGoal.targetDate } : null;
 

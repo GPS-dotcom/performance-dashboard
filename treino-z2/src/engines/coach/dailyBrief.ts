@@ -9,7 +9,7 @@ export interface DailyBriefInput {
   fitnessScore: number | null;
   trainingSignals: TrainingSignals;
   alertSignals: AlertSignals;
-  /** Short summaries (e.g. Insight.explanation) from the Intelligence Engine, pre-selected by the caller. */
+  /** Short summaries (e.g. Insight.description) from the Intelligence Engine, pre-selected by the caller. */
   keyInsightSummaries: string[];
   upcomingRace: { name: string; date: string } | null;
 }

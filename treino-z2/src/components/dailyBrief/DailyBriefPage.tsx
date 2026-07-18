@@ -33,7 +33,7 @@ export function DailyBriefPage() {
   const { brief, insights, racePredictions, recoveryTime, recoveryRecommendations, trainingLoadHistory, timelineEvents } =
     state.viewModel;
 
-  const fitnessTrend = insights.find((i) => i.kind === "trend" && i.metricName === "Fitness (CTL)");
+  const fitnessTrend = insights.find((i) => i.category === "fitness" && i.relatedMetrics.includes("ctl"));
 
   return (
     <div className="daily-brief">
@@ -46,7 +46,7 @@ export function DailyBriefPage() {
         recommendations={recoveryRecommendations}
       />
 
-      <FitnessSection score={brief.fitness.score} label={brief.fitness.label} trendExplanation={fitnessTrend?.explanation ?? null} />
+      <FitnessSection score={brief.fitness.score} label={brief.fitness.label} trendExplanation={fitnessTrend?.description ?? null} />
 
       <RecommendationSection recommendation={brief.trainingRecommendation} />
 

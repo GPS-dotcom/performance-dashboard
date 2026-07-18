@@ -1,4 +1,4 @@
-import type { Insight } from "../../engines/intelligence";
+import type { Insight } from "../../intelligence";
 import { Card } from "../ui/Card";
 import { ConfidenceBadge } from "../ui/ConfidenceBadge";
 import { EmptyState } from "../ui/EmptyState";
@@ -12,8 +12,8 @@ export function InsightsSection({ insights }: { insights: Insight[] }) {
       ) : (
         <ul className="insight-list">
           {insights.map((insight) => (
-            <li key={`${insight.kind}-${insight.metricName}`} className={`insight insight-${insight.severity}`}>
-              <p>{insight.explanation}</p>
+            <li key={insight.id} className={`insight insight-${insight.severity}`}>
+              <p>{insight.description}</p>
               <ConfidenceBadge confidence={insight.confidence} />
             </li>
           ))}

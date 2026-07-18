@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { detectTrend } from "../../engines/intelligence";
-import type { MetricPolarity, MetricSeriesPoint } from "../../engines/intelligence";
+import { classifySeries } from "../../intelligence";
+import type { MetricPolarity, MetricSeriesPoint } from "../../intelligence";
 import { rawDirectionFromTrend } from "../assembleDailyBrief";
 
 function series(values: number[], startDate = "2026-01-01"): MetricSeriesPoint[] {
@@ -8,9 +8,9 @@ function series(values: number[], startDate = "2026-01-01"): MetricSeriesPoint[]
   return values.map((value, i) => ({ date: new Date(start + i * 86400000).toISOString().slice(0, 10), value }));
 }
 
-/** What assembleDailyBrief's old rawDirection() did: a second, independent detectTrend call. */
-function rawDirectionBySecondCall(name: string, points: MetricSeriesPoint[]): string | null {
-  const trend = detectTrend(name, points, "higher_is_better");
+/** What assembleDailyBrief's old rawDirection() did: a second, independent classifySeries call. */
+function rawDirectionBySecondCall(points: MetricSeriesPoint[]): string | null {
+  const trend = classifySeries(points, "higher_is_better");
   if (!trend) return null;
   if (trend.direction === "stable") return "stable";
   return trend.direction === "improving" ? "increasing" : "decreasing";
@@ -28,11 +28,11 @@ describe("rawDirectionFromTrend", () => {
   ];
 
   for (const { name, values, polarity } of cases) {
-    it(`matches a second, independent detectTrend("higher_is_better") call for: ${name}`, () => {
+    it(`matches a second, independent classifySeries("higher_is_better") call for: ${name}`, () => {
       const points = series(values);
-      const trend = detectTrend("Metric", points, polarity);
+      const trend = classifySeries(points, polarity);
       const fast = rawDirectionFromTrend(trend, polarity);
-      const slow = rawDirectionBySecondCall("Metric", points);
+      const slow = rawDirectionBySecondCall(points);
       expect(fast).toBe(slow);
     });
   }
