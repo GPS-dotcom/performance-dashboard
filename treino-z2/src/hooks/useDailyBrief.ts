@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchMetricsHistory, fetchRecentActivities } from "../services/activityService";
 import { fetchUpcomingGoal } from "../services/goalService";
 import { assembleDailyBrief } from "./assembleDailyBrief";
@@ -9,6 +9,12 @@ export type DailyBriefLoadState =
   | { status: "error"; message: string }
   | { status: "ready"; viewModel: DailyBriefViewModel };
 
+export interface UseDailyBriefResult {
+  state: DailyBriefLoadState;
+  /** DESIGN_SYSTEM.md's Error State requires a "Retry Option" -- re-runs the same fetch. */
+  retry: () => void;
+}
+
 /**
  * Loads the athlete's activities, fitness history and upcoming goal, then
  * assembles the full Daily Brief view model (assembleDailyBrief) from
@@ -16,11 +22,14 @@ export type DailyBriefLoadState =
  * screen -- per docs/ARCHITECTURE.md's DEC-0004, "the home screen becomes
  * a Daily Brief instead of a metrics dashboard."
  */
-export function useDailyBrief(): DailyBriefLoadState {
+export function useDailyBrief(): UseDailyBriefResult {
   const [state, setState] = useState<DailyBriefLoadState>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setState({ status: "loading" });
+
     Promise.all([fetchRecentActivities(), fetchMetricsHistory(), fetchUpcomingGoal()])
       .then(([activities, history, upcomingGoal]) => {
         if (cancelled) return;
@@ -33,10 +42,13 @@ export function useDailyBrief(): DailyBriefLoadState {
           setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
         }
       });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
-  return state;
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
+
+  return { state, retry };
 }

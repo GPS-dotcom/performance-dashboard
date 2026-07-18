@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { Activity, MetricsSnapshot } from "../../types";
 import type { UpcomingGoal } from "../../services/goalService";
@@ -28,10 +28,10 @@ it("assembles a ready Daily Brief once all three fetches resolve", async () => {
 
   const { result } = renderHook(() => useDailyBrief());
 
-  expect(result.current).toEqual({ status: "loading" });
-  await waitFor(() => expect(result.current.status).toBe("ready"));
-  if (result.current.status !== "ready") throw new Error("expected ready");
-  expect(result.current.viewModel.brief.raceCountdown).toEqual({ raceName: "Chicago Marathon", daysUntil: 85 });
+  expect(result.current.state).toEqual({ status: "loading" });
+  await waitFor(() => expect(result.current.state.status).toBe("ready"));
+  if (result.current.state.status !== "ready") throw new Error("expected ready");
+  expect(result.current.state.viewModel.brief.raceCountdown).toEqual({ raceName: "Chicago Marathon", daysUntil: 85 });
 });
 
 it("resolves to an error state when a fetch rejects", async () => {
@@ -41,6 +41,22 @@ it("resolves to an error state when a fetch rejects", async () => {
 
   const { result } = renderHook(() => useDailyBrief());
 
-  await waitFor(() => expect(result.current.status).toBe("error"));
-  expect(result.current).toEqual({ status: "error", message: "network down" });
+  await waitFor(() => expect(result.current.state.status).toBe("error"));
+  expect(result.current.state).toEqual({ status: "error", message: "network down" });
+});
+
+it("retry() re-runs the fetch and can recover from an error", async () => {
+  fetchRecentActivities.mockRejectedValueOnce(new Error("network down"));
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+
+  const { result } = renderHook(() => useDailyBrief());
+  await waitFor(() => expect(result.current.state.status).toBe("error"));
+
+  fetchRecentActivities.mockResolvedValueOnce([]);
+  act(() => result.current.retry());
+
+  expect(result.current.state).toEqual({ status: "loading" });
+  await waitFor(() => expect(result.current.state.status).toBe("ready"));
+  expect(fetchRecentActivities).toHaveBeenCalledTimes(2);
 });

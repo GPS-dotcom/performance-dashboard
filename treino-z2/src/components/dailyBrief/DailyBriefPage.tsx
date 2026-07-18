@@ -1,4 +1,6 @@
 import { useDailyBrief } from "../../hooks/useDailyBrief";
+import { LoadingState } from "../ui/LoadingState";
+import { ErrorState } from "../ui/ErrorState";
 import { AlertBanner } from "./AlertBanner";
 import { RecoverySection } from "./RecoverySection";
 import { FitnessSection } from "./FitnessSection";
@@ -18,19 +20,14 @@ import { TimelineSection } from "./TimelineSection";
  * COACH_ENGINE.md says "Alerts have higher priority than recommendations."
  */
 export function DailyBriefPage() {
-  const state = useDailyBrief();
+  const { state, retry } = useDailyBrief();
 
   if (state.status === "loading") {
-    return <p className="empty-note">Preparing today's brief…</p>;
+    return <LoadingState message="Preparing today's brief…" />;
   }
 
   if (state.status === "error") {
-    return (
-      <div className="error-box">
-        <strong>Could not load today's brief.</strong>
-        <p>{state.message}</p>
-      </div>
-    );
+    return <ErrorState title="Could not load today's brief." message={state.message} onRetry={retry} />;
   }
 
   const { brief, insights, racePredictions, recoveryTime, recoveryRecommendations, trainingLoadHistory, timelineEvents } =

@@ -1,12 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { DailyBriefLoadState } from "../../../hooks/useDailyBrief";
+import type { DailyBriefLoadState, UseDailyBriefResult } from "../../../hooks/useDailyBrief";
 
-const useDailyBrief = vi.fn<() => DailyBriefLoadState>();
+const useDailyBrief = vi.fn<() => UseDailyBriefResult>();
+const retry = vi.fn();
 
 vi.mock("../../../hooks/useDailyBrief", () => ({
   useDailyBrief: () => useDailyBrief(),
 }));
+
+function withState(state: DailyBriefLoadState): UseDailyBriefResult {
+  return { state, retry };
+}
 
 const { DailyBriefPage } = await import("../DailyBriefPage");
 
@@ -79,19 +84,19 @@ function readyState(overrides: Partial<DailyBriefLoadState & { status: "ready" }
 }
 
 it("shows a loading message while the brief is loading", () => {
-  useDailyBrief.mockReturnValue({ status: "loading" });
+  useDailyBrief.mockReturnValue(withState({ status: "loading" }));
   render(<DailyBriefPage />);
   expect(screen.getByText(/Preparing today's brief/)).toBeInTheDocument();
 });
 
 it("shows an error message when the brief fails to load", () => {
-  useDailyBrief.mockReturnValue({ status: "error", message: "network down" });
+  useDailyBrief.mockReturnValue(withState({ status: "error", message: "network down" }));
   render(<DailyBriefPage />);
   expect(screen.getByText("network down")).toBeInTheDocument();
 });
 
 it("renders every section in the required order: Recovery, Fitness, Today's Recommendation, Insights, Predictions, Upcoming Races, Training Load, Timeline", () => {
-  useDailyBrief.mockReturnValue(readyState());
+  useDailyBrief.mockReturnValue(withState(readyState()));
   render(<DailyBriefPage />);
 
   const labels = screen.getAllByText(
@@ -110,7 +115,7 @@ it("renders every section in the required order: Recovery, Fitness, Today's Reco
 });
 
 it("surfaces real content in each section, not just numbers", () => {
-  useDailyBrief.mockReturnValue(readyState());
+  useDailyBrief.mockReturnValue(withState(readyState()));
   render(<DailyBriefPage />);
 
   expect(screen.getByText("Recovery is good (75%).")).toBeInTheDocument();
@@ -126,13 +131,13 @@ it("shows the alert banner above the sections when a warning is active", () => {
       { kind: "high_injury_risk", severity: "critical", message: "Injury risk is elevated.", evidence: ["Injury risk: high"] },
     ];
   }
-  useDailyBrief.mockReturnValue(state);
+  useDailyBrief.mockReturnValue(withState(state));
   render(<DailyBriefPage />);
   expect(screen.getByText("Injury risk is elevated.")).toBeInTheDocument();
 });
 
 it("renders no alert banner when there are no warnings", () => {
-  useDailyBrief.mockReturnValue(readyState());
+  useDailyBrief.mockReturnValue(withState(readyState()));
   render(<DailyBriefPage />);
   expect(screen.queryByText(/Injury risk/)).not.toBeInTheDocument();
 });

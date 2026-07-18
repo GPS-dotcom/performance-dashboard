@@ -1,4 +1,5 @@
 import type { MetricsSnapshot } from "../../types";
+import { EmptyState } from "../ui/EmptyState";
 
 interface Series {
   key: keyof Pick<MetricsSnapshot, "ctl" | "atl" | "tsb">;
@@ -7,9 +8,9 @@ interface Series {
 }
 
 const SERIES: Series[] = [
-  { key: "ctl", color: "#2a78d6", label: "Fitness (CTL)" },
-  { key: "atl", color: "#e34948", label: "Fatigue (ATL)" },
-  { key: "tsb", color: "#eda100", label: "Form (TSB)" },
+  { key: "ctl", color: "var(--color-primary)", label: "Fitness (CTL)" },
+  { key: "atl", color: "var(--color-danger)", label: "Fatigue (ATL)" },
+  { key: "tsb", color: "var(--color-warning)", label: "Form (TSB)" },
 ];
 
 const WIDTH = 640;
@@ -18,7 +19,7 @@ const PAD = 24;
 
 export function FitnessTrendChart({ history }: { history: MetricsSnapshot[] }) {
   if (history.length < 2) {
-    return <p className="empty-note">Not enough history yet to draw a trend.</p>;
+    return <EmptyState message="Not enough history yet to draw a trend." />;
   }
 
   const allValues = history.flatMap((s) => [s.ctl, s.atl, s.tsb]);

@@ -1,4 +1,5 @@
 import type { TrainingLoadPoint } from "../../engines/metrics";
+import { Card } from "../ui/Card";
 import { FitnessTrendChart } from "./FitnessTrendChart";
 
 export interface TrainingLoadSectionProps {
@@ -18,10 +19,9 @@ export function TrainingLoadSection({ history }: TrainingLoadSectionProps) {
   const latest = history.length > 0 ? history[history.length - 1] : null;
 
   return (
-    <section className="brief-section">
-      <div className="brief-section-label">Training Load</div>
+    <Card title="Training Load">
       <p className="brief-statement">{balanceSentence(latest)}</p>
       <FitnessTrendChart history={history} />
-    </section>
+    </Card>
   );
 }

@@ -1,22 +1,24 @@
 import type { Insight } from "../../engines/intelligence";
+import { Card } from "../ui/Card";
+import { ConfidenceBadge } from "../ui/ConfidenceBadge";
+import { EmptyState } from "../ui/EmptyState";
 
 /** Answers: "What's changing in my training?" */
 export function InsightsSection({ insights }: { insights: Insight[] }) {
   return (
-    <section className="brief-section">
-      <div className="brief-section-label">Insights</div>
+    <Card title="Insights">
       {insights.length === 0 ? (
-        <p className="empty-note">Not enough history yet to detect trends, plateaus or evolution.</p>
+        <EmptyState message="Not enough history yet to detect trends, plateaus or evolution." />
       ) : (
         <ul className="insight-list">
           {insights.map((insight) => (
             <li key={`${insight.kind}-${insight.metricName}`} className={`insight insight-${insight.severity}`}>
               <p>{insight.explanation}</p>
-              <span className="confidence-badge">{Math.round(insight.confidence * 100)}% confidence</span>
+              <ConfidenceBadge confidence={insight.confidence} />
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

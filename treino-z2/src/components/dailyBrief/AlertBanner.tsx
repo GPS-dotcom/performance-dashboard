@@ -12,7 +12,11 @@ export function AlertBanner({ alerts }: { alerts: CoachAlert[] }) {
   return (
     <div className="alert-banner">
       {alerts.map((alert) => (
-        <div key={alert.kind} className={`alert alert-${alert.severity}`}>
+        <div
+          key={alert.kind}
+          className={`alert alert-${alert.severity}`}
+          role={alert.severity === "critical" ? "alert" : "status"}
+        >
           <strong>{alert.message}</strong>
           {alert.evidence.length > 0 && <span className="alert-evidence">{alert.evidence.join(" · ")}</span>}
         </div>

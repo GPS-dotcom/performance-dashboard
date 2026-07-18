@@ -1,10 +1,11 @@
 import type { Recommendation } from "../../engines/coach";
+import { Card } from "../ui/Card";
+import { ConfidenceBadge } from "../ui/ConfidenceBadge";
 
 /** Answers: "What should I do today?" */
 export function RecommendationSection({ recommendation }: { recommendation: Recommendation }) {
   return (
-    <section className="brief-section">
-      <div className="brief-section-label">Today's Recommendation</div>
+    <Card title="Today's Recommendation">
       <p className="brief-statement">
         <strong>{recommendation.recommendation}</strong> -- {recommendation.reason}
       </p>
@@ -17,9 +18,9 @@ export function RecommendationSection({ recommendation }: { recommendation: Reco
       )}
       <p className="brief-substatement">{recommendation.expectedOutcome}</p>
       <div className="confidence-row">
-        <span className="confidence-badge">{Math.round(recommendation.confidence * 100)}% confidence</span>
+        <ConfidenceBadge confidence={recommendation.confidence} />
         {recommendation.alternative && <span className="alternative-note">{recommendation.alternative}</span>}
       </div>
-    </section>
+    </Card>
   );
 }

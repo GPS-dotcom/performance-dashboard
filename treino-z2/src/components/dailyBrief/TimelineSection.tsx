@@ -1,12 +1,13 @@
 import type { TimelineEvent } from "../../hooks/assembleDailyBrief";
+import { Card } from "../ui/Card";
+import { EmptyState } from "../ui/EmptyState";
 
 /** Answers: "What have I done recently?" */
 export function TimelineSection({ events }: { events: TimelineEvent[] }) {
   return (
-    <section className="brief-section">
-      <div className="brief-section-label">Timeline</div>
+    <Card title="Timeline">
       {events.length === 0 ? (
-        <p className="empty-note">No activities synced yet.</p>
+        <EmptyState message="No activities synced yet." />
       ) : (
         <ul className="timeline-list">
           {events.map((event, i) => (
@@ -19,6 +20,6 @@ export function TimelineSection({ events }: { events: TimelineEvent[] }) {
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

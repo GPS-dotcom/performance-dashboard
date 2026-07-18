@@ -1,5 +1,7 @@
 import type { MetricResult } from "../../engines/metrics";
 import type { Recommendation } from "../../engines/coach";
+import { Card } from "../ui/Card";
+import { EmptyState } from "../ui/EmptyState";
 
 export interface RecoverySectionProps {
   score: number | null;
@@ -10,11 +12,6 @@ export interface RecoverySectionProps {
 
 /** Answers: "Am I recovered?" */
 export function RecoverySection({ score, label, recoveryTime, recommendations }: RecoverySectionProps) {
-  const statusSentence =
-    score == null
-      ? "Not enough training history yet to estimate recovery."
-      : `Recovery is ${label} (${score.toFixed(0)}%).`;
-
   const recoveryTimeSentence =
     recoveryTime?.value == null
       ? null
@@ -23,9 +20,12 @@ export function RecoverySection({ score, label, recoveryTime, recommendations }:
         : `Estimated ${recoveryTime.value.daysUntilRecovered} day${recoveryTime.value.daysUntilRecovered === 1 ? "" : "s"} of rest until fully recovered.`;
 
   return (
-    <section className="brief-section">
-      <div className="brief-section-label">Recovery</div>
-      <p className="brief-statement">{statusSentence}</p>
+    <Card title="Recovery">
+      {score == null ? (
+        <EmptyState message="Not enough training history yet to estimate recovery." />
+      ) : (
+        <p className="brief-statement">{`Recovery is ${label} (${score.toFixed(0)}%).`}</p>
+      )}
       {recoveryTimeSentence && <p className="brief-substatement">{recoveryTimeSentence}</p>}
       {recommendations.length > 0 && (
         <ul className="recommendation-list">
@@ -36,6 +36,6 @@ export function RecoverySection({ score, label, recoveryTime, recommendations }:
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }
