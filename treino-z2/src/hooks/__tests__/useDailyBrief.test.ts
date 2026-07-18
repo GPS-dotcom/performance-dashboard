@@ -16,9 +16,11 @@ vi.mock("../../services/goalService", () => ({
 }));
 
 const { useDailyBrief } = await import("../useDailyBrief");
+const { writeDailyBriefCache } = await import("../dailyBriefCache");
 
 afterEach(() => {
   vi.resetAllMocks();
+  sessionStorage.clear();
 });
 
 it("assembles a ready Daily Brief once all three fetches resolve", async () => {
@@ -110,4 +112,71 @@ it("does not update state after the component unmounts mid-fetch, even when the 
 
   expect(errorSpy).not.toHaveBeenCalled();
   errorSpy.mockRestore();
+});
+
+it("shows a cached brief immediately on the first load instead of a loading state", async () => {
+  const cachedViewModel = { brief: { raceCountdown: { raceName: "Cached Race", daysUntil: 1 } } } as never;
+  writeDailyBriefCache(cachedViewModel);
+
+  let resolveActivities!: (activities: Activity[]) => void;
+  fetchRecentActivities.mockReturnValue(new Promise((resolve) => (resolveActivities = resolve)));
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+
+  const { result } = renderHook(() => useDailyBrief());
+
+  // Ready immediately, synchronously, from the cache -- no loading flash.
+  expect(result.current.state).toEqual({ status: "ready", viewModel: cachedViewModel });
+
+  await act(async () => {
+    resolveActivities([]);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  // The background fetch still completed and replaced it with fresh data.
+  await waitFor(() => {
+    if (result.current.state.status !== "ready") throw new Error("expected ready");
+    expect(result.current.state.viewModel).not.toEqual(cachedViewModel);
+  });
+});
+
+it("keeps showing cached data instead of an error when the background refresh fails", async () => {
+  const cachedViewModel = { brief: { raceCountdown: { raceName: "Cached Race", daysUntil: 1 } } } as never;
+  writeDailyBriefCache(cachedViewModel);
+
+  fetchRecentActivities.mockRejectedValue(new Error("network down"));
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+
+  const { result } = renderHook(() => useDailyBrief());
+  expect(result.current.state).toEqual({ status: "ready", viewModel: cachedViewModel });
+
+  // Give the rejected background fetch a chance to settle, then confirm
+  // the cached data is still what's shown -- not an error state.
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(result.current.state).toEqual({ status: "ready", viewModel: cachedViewModel });
+});
+
+it("ignores the cache and shows a normal loading state on retry()", async () => {
+  const cachedViewModel = { brief: { raceCountdown: { raceName: "Cached Race", daysUntil: 1 } } } as never;
+  writeDailyBriefCache(cachedViewModel);
+
+  fetchRecentActivities.mockResolvedValue([]);
+  fetchMetricsHistory.mockResolvedValue([]);
+  fetchUpcomingGoal.mockResolvedValue(null);
+
+  const { result } = renderHook(() => useDailyBrief());
+  expect(result.current.state).toEqual({ status: "ready", viewModel: cachedViewModel });
+  await waitFor(() => {
+    if (result.current.state.status !== "ready") throw new Error("expected ready");
+    expect(result.current.state.viewModel).not.toEqual(cachedViewModel);
+  });
+
+  act(() => result.current.retry());
+  expect(result.current.state).toEqual({ status: "loading" });
 });

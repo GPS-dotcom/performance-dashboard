@@ -1,7 +1,7 @@
 import { calculateFitnessScore, calculateRecoveryScore } from "../engines/metrics";
 import type { TrainingLoadPoint } from "../engines/metrics";
 import { detectPlateau, detectTrend } from "../engines/intelligence";
-import type { Insight, MetricSeriesPoint } from "../engines/intelligence";
+import type { Insight, MetricPolarity, MetricSeriesPoint, TrendResult } from "../engines/intelligence";
 import {
   predict10K,
   predict5K,
@@ -90,10 +90,25 @@ function deriveTimeline(activities: Activity[]): TimelineEvent[] {
  * own rule cascade is what decides whether that's good or bad.
  */
 function rawDirection(metricName: string, series: MetricSeriesPoint[]): TrendDirection | null {
-  const trend = detectTrend(metricName, series, "higher_is_better");
+  return rawDirectionFromTrend(detectTrend(metricName, series, "higher_is_better"), "higher_is_better");
+}
+
+/**
+ * Same raw fact as rawDirection, derived from a TrendResult that was
+ * already computed for some other polarity, instead of paying for a
+ * second detectTrend call (sort + linear regression) over the same
+ * series. `direction = (polarity === "higher_is_better") === rising ?
+ * "improving" : "declining"` is detectTrend's own labeling rule -- this
+ * inverts it algebraically to recover `rising`, so the result is
+ * identical to calling detectTrend a second time with
+ * "higher_is_better", just without redoing the regression.
+ */
+export function rawDirectionFromTrend(trend: TrendResult | null, polarity: MetricPolarity): TrendDirection | null {
   if (!trend) return null;
   if (trend.direction === "stable") return "stable";
-  return trend.direction === "improving" ? "increasing" : "decreasing";
+  const higherIsBetter = polarity === "higher_is_better";
+  const rising = trend.direction === "improving" ? higherIsBetter : !higherIsBetter;
+  return rising ? "increasing" : "decreasing";
 }
 
 /**
@@ -125,7 +140,11 @@ export function assembleDailyBrief(
     .map((m) => ({ date: m.date, value: calculateRecoveryScore({ tsb: m.tsb }).value }))
     .filter((p): p is MetricSeriesPoint => p.value != null);
 
-  const atlTrend = rawDirection("ATL", atlSeries);
+  // Computed once with "lower_is_better" (the polarity its Insight needs)
+  // and reused for atlTrend below via rawDirectionFromTrend, instead of
+  // running detectTrend over the same atlSeries twice.
+  const atlTrendInsight = detectTrend("Fatigue (ATL)", atlSeries, "lower_is_better");
+  const atlTrend = rawDirectionFromTrend(atlTrendInsight, "lower_is_better");
   const recoveryScoreTrend = rawDirection("Recovery Score", recoveryScoreSeries);
 
   const injuryRiskResult = ctl != null && atl != null ? predictInjuryRisk(ctl, atl) : null;
@@ -139,7 +158,6 @@ export function assembleDailyBrief(
 
   const insights: Insight[] = [];
   if (ctlTrend) insights.push(ctlTrend);
-  const atlTrendInsight = detectTrend("Fatigue (ATL)", atlSeries, "lower_is_better");
   if (atlTrendInsight) insights.push(atlTrendInsight);
   const ctlPlateau = detectPlateau("Fitness (CTL)", ctlSeries);
   if (ctlPlateau) insights.push(ctlPlateau);

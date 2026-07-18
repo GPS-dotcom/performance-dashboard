@@ -3,6 +3,7 @@ import { fetchMetricsHistory, fetchRecentActivities } from "../services/activity
 import { fetchUpcomingGoal } from "../services/goalService";
 import { assembleDailyBrief } from "./assembleDailyBrief";
 import type { DailyBriefViewModel } from "./assembleDailyBrief";
+import { readDailyBriefCache, writeDailyBriefCache } from "./dailyBriefCache";
 
 export type DailyBriefLoadState =
   | { status: "loading" }
@@ -21,6 +22,14 @@ export interface UseDailyBriefResult {
  * them. The Daily Brief replaces the old KPI-grid Dashboard as the home
  * screen -- per docs/ARCHITECTURE.md's DEC-0004, "the home screen becomes
  * a Daily Brief instead of a metrics dashboard."
+ *
+ * Stale-while-revalidate: on the very first load of a session (attempt
+ * 0), a cached brief from sessionStorage -- if fresh enough -- is shown
+ * immediately instead of a loading state, while this still kicks off a
+ * real fetch in the background and replaces it once that resolves. If
+ * that background fetch fails and cached data is already on screen, the
+ * cached brief is left in place rather than being replaced by an error --
+ * retry() always bypasses the cache and behaves exactly as before.
  */
 export function useDailyBrief(): UseDailyBriefResult {
   const [state, setState] = useState<DailyBriefLoadState>({ status: "loading" });
@@ -28,7 +37,8 @@ export function useDailyBrief(): UseDailyBriefResult {
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: "loading" });
+    const cached = attempt === 0 ? readDailyBriefCache() : null;
+    setState(cached ? { status: "ready", viewModel: cached } : { status: "loading" });
 
     Promise.all([fetchRecentActivities(), fetchMetricsHistory(), fetchUpcomingGoal()])
       .then(([activities, history, upcomingGoal]) => {
@@ -36,11 +46,11 @@ export function useDailyBrief(): UseDailyBriefResult {
         const today = new Date().toISOString().slice(0, 10);
         const viewModel = assembleDailyBrief(activities, history, upcomingGoal, today);
         setState({ status: "ready", viewModel });
+        writeDailyBriefCache(viewModel);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
-        }
+        if (cancelled || cached) return; // keep showing cached data rather than downgrade to an error
+        setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
       });
 
     return () => {

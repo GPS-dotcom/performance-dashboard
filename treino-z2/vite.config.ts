@@ -5,6 +5,19 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Split third-party code into its own chunk. It changes far less
+        // often than app code, so browsers can keep reusing the cached
+        // vendor chunk across deploys that only touch app code -- instead
+        // of invalidating everything on every release.
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor'
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

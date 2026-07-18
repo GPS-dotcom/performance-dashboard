@@ -16,6 +16,7 @@ function chainResolving(result: { data?: unknown; error?: unknown }) {
     select: () => handler,
     order: () => handler,
     limit: () => handler,
+    gte: () => handler,
     then: (resolve: (value: unknown) => unknown) => resolve(result),
   };
   return handler;
@@ -89,5 +90,28 @@ describe("fetchMetricsHistory", () => {
   it("throws the underlying error when the query fails", async () => {
     fromMock.mockImplementationOnce(() => chainResolving({ data: null, error: new Error("timeout") }));
     await expect(fetchMetricsHistory()).rejects.toThrow("timeout");
+  });
+
+  it("filters by a date cutoff rather than a row limit, since the query is sorted oldest-first", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T12:00:00Z"));
+
+    const gteMock = vi.fn(function (this: unknown) {
+      return this;
+    });
+    fromMock.mockImplementationOnce(() => {
+      const handler: Record<string, unknown> = {
+        select: () => handler,
+        gte: gteMock.mockImplementation(() => handler),
+        order: () => handler,
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
+      };
+      return handler;
+    });
+
+    await fetchMetricsHistory(30);
+
+    expect(gteMock).toHaveBeenCalledWith("date", "2026-06-18");
+    vi.useRealTimers();
   });
 });
