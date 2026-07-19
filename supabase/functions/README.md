@@ -84,9 +84,21 @@ rate) -- exactly the same requirement as
 these set, every day's load comes out as 0 (not wrong, just uninformative).
 
 There is no profile-editing UI yet (see `DASHBOARD_REPORT.md`'s
-Limitations), so set these directly via SQL once. `athletes.user_id`
-requires a real `auth.users` row (Dashboard → Authentication → Users →
-Add User), then:
+Limitations), so set these directly via SQL once.
+
+If this project only has the legacy schema (migration 0013 -- no
+`athletes` table at all), run `0015_legacy_athletes.sql` first; it
+creates a minimal `athletes` table with no auth requirement (this app
+has no sign-in flow). Then:
+
+```sql
+insert into athletes (ftp, threshold_heart_rate)
+values (250, 165); -- adjust to your real numbers; either one alone is enough
+```
+
+If this project instead ran the full spec migrations (0001+),
+`athletes.user_id` is a NOT NULL FK to `auth.users` -- create a real user
+first (Dashboard → Authentication → Users → Add User), then:
 
 ```sql
 insert into athletes (user_id, ftp, threshold_heart_rate)
