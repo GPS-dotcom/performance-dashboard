@@ -53,6 +53,8 @@ export default defineConfig({
         'src/metrics/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         // Intelligence Engine coverage floor, per the explicit request that created it.
         'src/intelligence/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        // Prediction Engine coverage floor, per the explicit request that created it.
+        'src/prediction/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/components/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },

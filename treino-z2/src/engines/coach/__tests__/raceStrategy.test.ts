@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateRaceStrategy } from "../raceStrategy";
-import { RACE_DISTANCES_KM } from "../../prediction";
+import { RACE_DISTANCES_KM } from "../../../prediction";
 
 describe("generateRaceStrategy", () => {
   it("derives target pace directly from the given prediction, without predicting a new time", () => {

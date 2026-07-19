@@ -1,4 +1,4 @@
-import { RACE_DISTANCES_KM } from "../prediction";
+import { RACE_DISTANCES_KM } from "../../prediction";
 
 export interface RaceStrategyInput {
   raceDistanceKm: number;

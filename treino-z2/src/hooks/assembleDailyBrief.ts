@@ -2,18 +2,10 @@ import { calculateFitnessScore, calculateRecoveryScore } from "../metrics";
 import type { TrainingLoadPoint } from "../metrics";
 import { buildTrendInsight, classifySeries, detectStagnation } from "../intelligence";
 import type { Insight, MetricPolarity, MetricSeriesPoint, TrendClassification } from "../intelligence";
-import {
-  predict10K,
-  predict5K,
-  predictHalfMarathon,
-  predictInjuryRisk,
-  predictMarathon,
-  predictRecoveryTime,
-} from "../engines/prediction";
-import type { BestEffort, RacePrediction } from "../engines/prediction";
+import { predictAcuteLoadRisk, predictRace10K, predictRace21K, predictRace5K, predictRaceMarathon, predictRecoveryTime } from "../prediction";
+import type { BestEffort, Prediction, RaceModelValue, RecoveryModelValue } from "../prediction";
 import { generateDailyBrief, recommendRecovery } from "../engines/coach";
 import type { DailyBrief, Recommendation, TrendDirection } from "../engines/coach";
-import type { MetricResult } from "../metrics";
 import type { Activity, MetricsSnapshot } from "../types";
 import type { UpcomingGoal } from "../services/goalService";
 
@@ -27,8 +19,8 @@ export interface TimelineEvent {
 export interface DailyBriefViewModel {
   brief: DailyBrief;
   insights: Insight[];
-  racePredictions: { label: string; result: MetricResult<RacePrediction> }[];
-  recoveryTime: MetricResult<{ daysUntilRecovered: number; assumedRestTss: number }> | null;
+  racePredictions: { label: string; result: Prediction<RaceModelValue> }[];
+  recoveryTime: Prediction<RecoveryModelValue> | null;
   recoveryRecommendations: Recommendation[];
   trainingLoadHistory: TrainingLoadPoint[];
   timelineEvents: TimelineEvent[];
@@ -148,11 +140,11 @@ export function assembleDailyBrief(
   const atlTrend = rawDirectionFromTrend(atlClassification, "lower_is_better");
   const recoveryScoreTrend = rawDirection(recoveryScoreSeries);
 
-  const injuryRiskResult = ctl != null && atl != null ? predictInjuryRisk(ctl, atl) : null;
+  const injuryRiskResult = ctl != null && atl != null ? predictAcuteLoadRisk(ctl, atl, today) : null;
   const injuryRiskLevel = injuryRiskResult?.value?.riskLevel ?? null;
   const acwr = injuryRiskResult?.value?.acwr ?? null;
 
-  const recoveryTime = ctl != null && atl != null ? predictRecoveryTime(ctl, atl) : null;
+  const recoveryTime = ctl != null && atl != null ? predictRecoveryTime(ctl, atl, today) : null;
 
   // Same single-computation-per-series pattern as ATL above.
   const ctlClassification = classifySeries(ctlSeries, "higher_is_better");
@@ -202,10 +194,10 @@ export function assembleDailyBrief(
 
   const bestEfforts = extractBestEfforts(activities);
   const racePredictions = [
-    { label: "5K", result: predict5K(bestEfforts) },
-    { label: "10K", result: predict10K(bestEfforts) },
-    { label: "Half Marathon", result: predictHalfMarathon(bestEfforts) },
-    { label: "Marathon", result: predictMarathon(bestEfforts) },
+    { label: "5K", result: predictRace5K(bestEfforts, today) },
+    { label: "10K", result: predictRace10K(bestEfforts, today) },
+    { label: "Half Marathon", result: predictRace21K(bestEfforts, today) },
+    { label: "Marathon", result: predictRaceMarathon(bestEfforts, today) },
   ];
 
   const trainingLoadHistory: TrainingLoadPoint[] = metricsHistory.map((m) => ({ date: m.date, ctl: m.ctl, atl: m.atl, tsb: m.tsb }));

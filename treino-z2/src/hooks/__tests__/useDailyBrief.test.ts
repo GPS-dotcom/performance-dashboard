@@ -33,7 +33,14 @@ it("assembles a ready Daily Brief once all three fetches resolve", async () => {
   expect(result.current.state).toEqual({ status: "loading" });
   await waitFor(() => expect(result.current.state.status).toBe("ready"));
   if (result.current.state.status !== "ready") throw new Error("expected ready");
-  expect(result.current.state.viewModel.brief.raceCountdown).toEqual({ raceName: "Chicago Marathon", daysUntil: 85 });
+  // Computed relative to the real system clock (assembleDailyBrief uses
+  // today's actual date, not a fixture date) rather than a hardcoded
+  // day count, so this assertion doesn't drift by one as wall-clock time
+  // crosses a day boundary between when the test was written and when it runs.
+  const today = new Date();
+  const target = new Date("2026-10-11T00:00:00Z");
+  const expectedDaysUntil = Math.round((target.getTime() - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
+  expect(result.current.state.viewModel.brief.raceCountdown).toEqual({ raceName: "Chicago Marathon", daysUntil: expectedDaysUntil });
 });
 
 it("resolves to an error state when a fetch rejects", async () => {

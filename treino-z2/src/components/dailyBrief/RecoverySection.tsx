@@ -1,4 +1,4 @@
-import type { MetricResult } from "../../metrics";
+import type { Prediction, RecoveryModelValue } from "../../prediction";
 import type { Recommendation } from "../../engines/coach";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";
@@ -6,7 +6,7 @@ import { EmptyState } from "../ui/EmptyState";
 export interface RecoverySectionProps {
   score: number | null;
   label: string;
-  recoveryTime: MetricResult<{ daysUntilRecovered: number; assumedRestTss: number }> | null;
+  recoveryTime: Prediction<RecoveryModelValue> | null;
   recommendations: Recommendation[];
 }
 

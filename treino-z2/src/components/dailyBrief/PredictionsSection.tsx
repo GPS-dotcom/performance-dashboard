@@ -1,12 +1,11 @@
-import type { MetricResult } from "../../metrics";
-import type { RacePrediction } from "../../engines/prediction";
+import type { Prediction, RaceModelValue } from "../../prediction";
 import { formatDuration } from "../../utils/format";
 import { Card } from "../ui/Card";
 import { ConfidenceBadge } from "../ui/ConfidenceBadge";
 import { EmptyState } from "../ui/EmptyState";
 
 export interface PredictionsSectionProps {
-  racePredictions: { label: string; result: MetricResult<RacePrediction> }[];
+  racePredictions: { label: string; result: Prediction<RaceModelValue> }[];
 }
 
 /** Answers: "What could I run right now?" */
