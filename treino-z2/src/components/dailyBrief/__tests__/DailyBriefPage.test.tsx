@@ -25,23 +25,40 @@ function readyState(overrides: Partial<DailyBriefLoadState & { status: "ready" }
     viewModel: {
       brief: {
         date: "2026-07-18",
-        status: "Recovery is good, fitness is good. Today's recommendation: Long Run.",
-        recovery: { score: 75, label: "good" },
-        fitness: { score: 60, label: "good" },
-        trainingRecommendation: {
-          recommendation: "Long Run",
-          reason: "Recovery is good enough to sustain a longer aerobic effort.",
-          evidence: ["Recovery Score 75%"],
+        summary: "Recovery is good, fitness is good. Today's decision: maintain load (Long Run).",
+        keyChanges: ["Recovery Score increased."],
+        attentionPoints: [],
+        recentEvolution: ["Recovery is good.", "Fitness is good.", "Fitness (CTL) is improving (2.00 per week) over the last 20 data points."],
+        trainingDecision: {
+          id: "decision:maintain_load:2026-07-18",
+          action: "maintain_load",
+          reasoning: "Recovery is good enough to sustain the current training load without adding or removing volume.",
+          supportingMetrics: ["recovery_score"],
           confidence: 0.68,
-          expectedOutcome: "Builds aerobic endurance.",
-          alternative: "If fatigue rises, shorten it.",
+          strategyUsed: "good_recovery_maintain",
+          generatedAt: "2026-07-18",
         },
-        keyInsights: ["Fitness (CTL) is improving (2.00 per week) over the last 20 data points."],
+        recommendations: [
+          {
+            id: "recommendation:long_run:2026-07-18",
+            type: "intensity",
+            priority: 3,
+            title: "Long Run",
+            description: "Builds aerobic endurance while recovery capacity allows it.",
+            reasoning: "Recovery is good enough to sustain a longer aerobic effort.",
+            supportingMetrics: ["recovery_score"],
+            supportingInsights: [],
+            supportingPredictions: [],
+            confidence: 0.68,
+            createdAt: "2026-07-18T00:00:00.000Z",
+          },
+        ],
+        alerts: [],
         raceCountdown: { raceName: "Chicago Marathon", daysUntil: 85 },
-        warnings: [],
-        opportunities: [],
         confidenceLevel: 0.68,
       },
+      recovery: { score: 75, label: "good" },
+      fitness: { score: 60, label: "good" },
       insights: [
         {
           id: "insight:trend_ctl_improving:2026-07-18",
@@ -62,20 +79,34 @@ function readyState(overrides: Partial<DailyBriefLoadState & { status: "ready" }
         {
           label: "5K",
           result: {
-            value: { targetDistanceKm: 5, predictedTimeSec: 1200, method: "actual_best_effort", anchorDistanceKm: 5, anchorTimeSec: 1200 },
+            id: "prediction:race_fiveK:2026-07-18",
+            predictionType: "race_time_5k",
+            category: "race",
+            value: { predictedTimeSec: 1200, method: "actual_best_effort", anchorDistanceKm: 5, anchorTimeSec: 1200 },
             confidence: 0.95,
-            dataQuality: "high",
-            requiredInputs: [],
-            missingInputs: [],
+            lowerBound: 1140,
+            upperBound: 1260,
+            supportingMetrics: ["best_effort"],
+            supportingInsights: [],
+            assumptions: [],
+            generatedAt: "2026-07-18T00:00:00.000Z",
+            expiresAt: "2026-08-17T00:00:00.000Z",
           },
         },
       ],
       recoveryTime: {
-        value: { daysUntilRecovered: 0, assumedRestTss: 0 },
+        id: "prediction:recovery_time:2026-07-18",
+        predictionType: "recovery_time",
+        category: "recovery",
+        value: { daysUntilRecovered: 0, assumedDailyTss: 0 },
         confidence: 0.8,
-        dataQuality: "high",
-        requiredInputs: [],
-        missingInputs: [],
+        lowerBound: 0,
+        upperBound: 0,
+        supportingMetrics: ["ctl", "atl"],
+        supportingInsights: [],
+        assumptions: [],
+        generatedAt: "2026-07-18T00:00:00.000Z",
+        expiresAt: "2026-07-19T00:00:00.000Z",
       },
       recoveryRecommendations: [],
       trainingLoadHistory: [
@@ -129,11 +160,19 @@ it("surfaces real content in each section, not just numbers", () => {
   expect(screen.getByText(/Chicago Marathon/)).toBeInTheDocument();
 });
 
-it("shows the alert banner above the sections when a warning is active", () => {
+it("shows the alert banner above the sections when an alert is active", () => {
   const state = readyState();
   if (state.status === "ready") {
-    state.viewModel.brief.warnings = [
-      { kind: "high_injury_risk", severity: "critical", message: "Injury risk is elevated.", evidence: ["Injury risk: high"] },
+    state.viewModel.brief.alerts = [
+      {
+        id: "alert:high_injury_risk:2026-07-18",
+        severity: "critical",
+        category: "injury_risk",
+        title: "High Injury Risk",
+        description: "Injury risk is elevated.",
+        actionRequired: "Reduce load or take a rest day.",
+        generatedAt: "2026-07-18",
+      },
     ];
   }
   useDailyBrief.mockReturnValue(withState(state));
@@ -141,7 +180,7 @@ it("shows the alert banner above the sections when a warning is active", () => {
   expect(screen.getByText("Injury risk is elevated.")).toBeInTheDocument();
 });
 
-it("renders no alert banner when there are no warnings", () => {
+it("renders no alert banner when there are no alerts", () => {
   useDailyBrief.mockReturnValue(withState(readyState()));
   render(<DailyBriefPage />);
   expect(screen.queryByText(/Injury risk/)).not.toBeInTheDocument();

@@ -30,25 +30,21 @@ export function DailyBriefPage() {
     return <ErrorState title="Could not load today's brief." message={state.message} onRetry={retry} />;
   }
 
-  const { brief, insights, racePredictions, recoveryTime, recoveryRecommendations, trainingLoadHistory, timelineEvents } =
+  const { brief, recovery, fitness, insights, racePredictions, recoveryTime, recoveryRecommendations, trainingLoadHistory, timelineEvents } =
     state.viewModel;
 
   const fitnessTrend = insights.find((i) => i.category === "fitness" && i.relatedMetrics.includes("ctl"));
+  const trainingRecommendation = brief.recommendations.find((r) => r.type === "intensity") ?? brief.recommendations[0];
 
   return (
     <div className="daily-brief">
-      <AlertBanner alerts={brief.warnings} />
+      <AlertBanner alerts={brief.alerts} />
 
-      <RecoverySection
-        score={brief.recovery.score}
-        label={brief.recovery.label}
-        recoveryTime={recoveryTime}
-        recommendations={recoveryRecommendations}
-      />
+      <RecoverySection score={recovery.score} label={recovery.label} recoveryTime={recoveryTime} recommendations={recoveryRecommendations} />
 
-      <FitnessSection score={brief.fitness.score} label={brief.fitness.label} trendExplanation={fitnessTrend?.description ?? null} />
+      <FitnessSection score={fitness.score} label={fitness.label} trendExplanation={fitnessTrend?.description ?? null} />
 
-      <RecommendationSection recommendation={brief.trainingRecommendation} />
+      <RecommendationSection recommendation={trainingRecommendation} />
 
       <InsightsSection insights={insights} />
 

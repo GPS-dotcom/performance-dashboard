@@ -1,7 +1,25 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import type { Prediction, RecoveryModelValue } from "../../../prediction";
+import type { Recommendation } from "../../../coach";
 import { RecoverySection } from "../RecoverySection";
+
+function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
+  return {
+    id: "recommendation:recovery_day:2026-07-18",
+    type: "recovery",
+    priority: 1,
+    title: "Recovery Day",
+    description: "Take a full recovery day.",
+    reasoning: "Recovery is critically low.",
+    supportingMetrics: ["recovery_score"],
+    supportingInsights: [],
+    supportingPredictions: [],
+    confidence: 0.8,
+    createdAt: "2026-07-18T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 function makeRecoveryPrediction(overrides: Partial<Prediction<RecoveryModelValue>> = {}): Prediction<RecoveryModelValue> {
   return {
@@ -57,9 +75,7 @@ it("lists recovery recommendations when present", () => {
       score={30}
       label="low"
       recoveryTime={null}
-      recommendations={[
-        { recommendation: "Recovery Day", reason: "Recovery is critically low.", evidence: [], confidence: 0.8, expectedOutcome: "x", alternative: null },
-      ]}
+      recommendations={[makeRecommendation()]}
     />,
   );
   expect(screen.getByText("Recovery Day")).toBeInTheDocument();

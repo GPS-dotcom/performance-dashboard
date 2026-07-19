@@ -1,5 +1,5 @@
 import type { Prediction, RecoveryModelValue } from "../../prediction";
-import type { Recommendation } from "../../engines/coach";
+import type { Recommendation } from "../../coach";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";
 
@@ -30,8 +30,8 @@ export function RecoverySection({ score, label, recoveryTime, recommendations }:
       {recommendations.length > 0 && (
         <ul className="recommendation-list">
           {recommendations.map((rec) => (
-            <li key={rec.recommendation}>
-              <strong>{rec.recommendation}</strong> -- {rec.reason}
+            <li key={rec.id}>
+              <strong>{rec.title}</strong> -- {rec.reasoning}
             </li>
           ))}
         </ul>

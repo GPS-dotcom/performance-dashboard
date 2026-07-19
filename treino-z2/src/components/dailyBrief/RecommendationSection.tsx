@@ -1,4 +1,4 @@
-import type { Recommendation } from "../../engines/coach";
+import type { Recommendation } from "../../coach";
 import { Card } from "../ui/Card";
 import { ConfidenceBadge } from "../ui/ConfidenceBadge";
 
@@ -7,19 +7,18 @@ export function RecommendationSection({ recommendation }: { recommendation: Reco
   return (
     <Card title="Today's Recommendation">
       <p className="brief-statement">
-        <strong>{recommendation.recommendation}</strong> -- {recommendation.reason}
+        <strong>{recommendation.title}</strong> -- {recommendation.reasoning}
       </p>
-      {recommendation.evidence.length > 0 && (
+      {recommendation.supportingMetrics.length > 0 && (
         <ul className="evidence-list">
-          {recommendation.evidence.map((item) => (
+          {recommendation.supportingMetrics.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       )}
-      <p className="brief-substatement">{recommendation.expectedOutcome}</p>
+      <p className="brief-substatement">{recommendation.description}</p>
       <div className="confidence-row">
         <ConfidenceBadge confidence={recommendation.confidence} />
-        {recommendation.alternative && <span className="alternative-note">{recommendation.alternative}</span>}
       </div>
     </Card>
   );

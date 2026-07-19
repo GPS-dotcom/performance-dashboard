@@ -32,8 +32,8 @@ function metricsSeries(ctlValues: number[], startDate = "2026-06-01"): MetricsSn
 describe("assembleDailyBrief", () => {
   it("returns a fully unavailable brief gracefully when there is no history at all", () => {
     const result = assembleDailyBrief([], [], null, "2026-07-18");
-    expect(result.brief.recovery.score).toBeNull();
-    expect(result.brief.fitness.score).toBeNull();
+    expect(result.recovery.score).toBeNull();
+    expect(result.fitness.score).toBeNull();
     expect(result.trainingLoadHistory).toEqual([]);
     expect(result.timelineEvents).toEqual([]);
     expect(result.racePredictions.every((p) => p.result.value === null)).toBe(true);
@@ -42,8 +42,8 @@ describe("assembleDailyBrief", () => {
   it("computes recovery and fitness scores from the latest metrics snapshot", () => {
     const history = metricsSeries(Array.from({ length: 20 }, (_, i) => 40 + i));
     const result = assembleDailyBrief([], history, null, "2026-06-20");
-    expect(result.brief.recovery.score).not.toBeNull();
-    expect(result.brief.fitness.score).not.toBeNull();
+    expect(result.recovery.score).not.toBeNull();
+    expect(result.fitness.score).not.toBeNull();
   });
 
   it("derives race predictions from best efforts across activities, keeping the fastest per distance", () => {
@@ -81,7 +81,9 @@ describe("assembleDailyBrief", () => {
     const history = metricsSeries(Array.from({ length: 20 }, (_, i) => 40 + i * 2)); // strong upward trend
     const result = assembleDailyBrief([], history, null, "2026-06-20");
     expect(result.insights.length).toBeGreaterThan(0);
-    expect(result.brief.keyInsights.length).toBeGreaterThan(0);
+    // recentEvolution always seeds with 2 base sentences (recovery/fitness labels) --
+    // more than that proves the Intelligence Engine insights were folded in.
+    expect(result.brief.recentEvolution.length).toBeGreaterThan(2);
   });
 
   it("recommends recovery actions when recovery is low, and none when things look fine", () => {
@@ -92,7 +94,7 @@ describe("assembleDailyBrief", () => {
     const healthyHistory: MetricsSnapshot[] = [{ date: "2026-07-18", ctl: 50, atl: 50, tsb: 0 }];
     const healthy = assembleDailyBrief([], healthyHistory, null, "2026-07-18");
     // Sleep Priority always fires (no wearable data), but no load-driven recommendations should.
-    expect(healthy.recoveryRecommendations.every((r) => r.recommendation === "Sleep Priority")).toBe(true);
+    expect(healthy.recoveryRecommendations.every((r) => r.title === "Sleep Priority")).toBe(true);
   });
 
   it("computes a recovery time projection once ctl/atl are available", () => {
@@ -131,10 +133,10 @@ describe("assembleDailyBrief", () => {
     expect(result.timelineEvents[0].description).toBe("");
   });
 
-  it("raises a rapid_performance_drop alert on a high-confidence declining CTL trend", () => {
+  it("raises a performance_drop alert on a high-confidence declining CTL trend", () => {
     const history = metricsSeries(Array.from({ length: 20 }, (_, i) => 80 - i * 2)); // strong, clean decline
     const result = assembleDailyBrief([], history, null, "2026-06-20");
-    expect(result.brief.warnings.some((w) => w.kind === "rapid_performance_drop")).toBe(true);
+    expect(result.brief.alerts.some((a) => a.category === "performance_drop")).toBe(true);
   });
 
   it("detects a CTL plateau when the recent window has stopped moving", () => {

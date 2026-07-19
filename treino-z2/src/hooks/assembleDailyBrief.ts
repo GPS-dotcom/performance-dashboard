@@ -4,8 +4,8 @@ import { buildTrendInsight, classifySeries, detectStagnation } from "../intellig
 import type { Insight, MetricPolarity, MetricSeriesPoint, TrendClassification } from "../intelligence";
 import { predictAcuteLoadRisk, predictRace10K, predictRace21K, predictRace5K, predictRaceMarathon, predictRecoveryTime } from "../prediction";
 import type { BestEffort, Prediction, RaceModelValue, RecoveryModelValue } from "../prediction";
-import { generateDailyBrief, recommendRecovery } from "../engines/coach";
-import type { DailyBrief, Recommendation, TrendDirection } from "../engines/coach";
+import { generateDailyBrief, scoreLabel } from "../coach";
+import type { DailyBriefSummary, Recommendation, TrendDirection } from "../coach";
 import type { Activity, MetricsSnapshot } from "../types";
 import type { UpcomingGoal } from "../services/goalService";
 
@@ -17,7 +17,9 @@ export interface TimelineEvent {
 }
 
 export interface DailyBriefViewModel {
-  brief: DailyBrief;
+  brief: DailyBriefSummary;
+  recovery: { score: number | null; label: string };
+  fitness: { score: number | null; label: string };
   insights: Insight[];
   racePredictions: { label: string; result: Prediction<RaceModelValue> }[];
   recoveryTime: Prediction<RecoveryModelValue> | null;
@@ -174,23 +176,31 @@ export function assembleDailyBrief(
       tsb,
       injuryRiskLevel,
     },
+    recoverySignals: {
+      recoveryScore,
+      acwr,
+      hrDriftTrend: null,
+      hasWearableRecoveryData: false, // no wearable integration exists yet -- see PROJECT_AUDIT.md
+    },
     alertSignals: {
       injuryRiskLevel,
       tsb,
       recoveryScore,
       acwr,
       performanceTrendDeclining,
+      consistencyDeclining: false, // requires the Intelligence Engine's Consistency Analyzer wired in here, not done yet
+      missedWeeksEvidence: null,
+      newPersonalBest: null, // requires the Intelligence Engine's Performance Analyzer wired in here, not done yet
     },
     keyInsightSummaries,
     upcomingRace,
   });
 
-  const recoveryRecommendations = recommendRecovery({
-    recoveryScore,
-    acwr,
-    hrDriftTrend: null,
-    hasWearableRecoveryData: false, // no wearable integration exists yet -- see PROJECT_AUDIT.md
-  });
+  // The Daily Brief Generator already computed recovery recommendations as
+  // part of `brief.recommendations` (alongside the intensity one) --
+  // filtered back out here for the Recovery section, instead of calling
+  // generateRecoveryRecommendations a second time over the same signals.
+  const recoveryRecommendations = brief.recommendations.filter((r) => r.type === "recovery");
 
   const bestEfforts = extractBestEfforts(activities);
   const racePredictions = [
@@ -204,6 +214,8 @@ export function assembleDailyBrief(
 
   return {
     brief,
+    recovery: { score: recoveryScore, label: scoreLabel(recoveryScore) },
+    fitness: { score: fitnessScore, label: scoreLabel(fitnessScore) },
     insights,
     racePredictions,
     recoveryTime,
