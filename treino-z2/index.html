@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Loaded as a non-blocking preload instead of a plain
+      `rel="stylesheet"`: a synchronous stylesheet link blocks first
+      paint on a network round-trip to fonts.googleapis.com before the
+      browser can render anything. Preloading it and swapping `rel` to
+      "stylesheet" on load lets the page paint immediately in the
+      system-font fallback (--font-family already lists one) and swap to
+      Inter once it arrives, same as `display=swap` already does for the
+      font file itself. <noscript> covers browsers with JS disabled.
+    -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      />
+    </noscript>
+    <title>Treino Z2</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
