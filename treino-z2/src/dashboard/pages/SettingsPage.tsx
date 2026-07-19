@@ -9,6 +9,7 @@ import { useTheme } from "../providers/themeContext";
 import type { ThemePreference } from "../providers/themeContext";
 import { appPluginManager } from "../../platform/manager/appPluginManager";
 import { PluginWidgetSlot } from "../widgets/PluginWidgetSlot";
+import { formatPace } from "../../utils/format";
 
 /**
  * Settings page: theme preference (the only setting with a real backing
@@ -55,7 +56,7 @@ export function SettingsPage() {
               <li>FTP: {state.data.athlete.ftp != null ? `${state.data.athlete.ftp}W` : "not set"}</li>
               <li>Weight: {state.data.athlete.weightKg != null ? `${state.data.athlete.weightKg}kg` : "not set"}</li>
               <li>Max HR: {state.data.athlete.maxHr != null ? `${state.data.athlete.maxHr}bpm` : "not set"}</li>
-              <li>Threshold Pace: {state.data.athlete.thresholdPaceSecPerKm != null ? `${state.data.athlete.thresholdPaceSecPerKm}s/km` : "not set"}</li>
+              <li>Threshold Pace: {state.data.athlete.thresholdPaceSecPerKm != null ? formatPace(state.data.athlete.thresholdPaceSecPerKm / 60) : "not set"}</li>
               <li>Threshold Heart Rate: {state.data.athlete.thresholdHeartRate != null ? `${state.data.athlete.thresholdHeartRate}bpm` : "not set"}</li>
               <li>Units: {state.data.athlete.preferredUnits}</li>
             </ul>
