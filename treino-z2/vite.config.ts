@@ -70,6 +70,8 @@ export default defineConfig({
         'src/dashboard/hooks/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/dashboard/services/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/dashboard/providers/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        // Plugin Platform coverage floor, per the explicit request that created it.
+        'src/platform/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
       },
     },
   },
