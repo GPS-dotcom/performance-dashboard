@@ -58,6 +58,18 @@ export default defineConfig({
         // Coach Engine coverage floor, per the explicit request that created it.
         'src/coach/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
         'src/components/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        // Dashboard coverage floor, per the explicit request that created it.
+        // pages/ and layouts/ are thin presentational compositions over
+        // already-tested hooks/components (same shape as src/components/**),
+        // so they sit at the UI floor; hooks/services/providers hold real
+        // logic (data assembly, I/O, persistence) and sit at the engine floor.
+        'src/dashboard/pages/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/dashboard/layouts/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/dashboard/widgets/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/dashboard/components/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        'src/dashboard/hooks/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        'src/dashboard/services/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
+        'src/dashboard/providers/**': { statements: 90, branches: 90, functions: 90, lines: 90 },
       },
     },
   },

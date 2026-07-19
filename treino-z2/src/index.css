@@ -100,6 +100,41 @@
   }
 }
 
+/*
+  Manual dark-mode override (dashboard/providers/ThemeProvider): stamps
+  data-theme on <html> and must win over prefers-color-scheme in both
+  directions, so these are plain selectors outside any @media block.
+*/
+:root[data-theme="dark"] {
+  --page: #101114;
+  --surface: #17181c;
+  --text-primary: #f3f3f1;
+  --text-secondary: #b7b6b1;
+  --text-muted: #908f8b;
+  --border: rgba(255, 255, 255, 0.12);
+  --divider: rgba(255, 255, 255, 0.08);
+  --color-primary: #5b9bdb;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --on-color: #0b0b0b;
+}
+
+:root[data-theme="light"] {
+  --page: #f9f9f7;
+  --surface: #ffffff;
+  --text-primary: #0b0b0b;
+  --text-secondary: #5c5b57;
+  --text-muted: #706e67;
+  --border: rgba(11, 11, 11, 0.1);
+  --divider: rgba(11, 11, 11, 0.08);
+  --color-primary: #1f66bd;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+  --on-color: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -505,6 +540,333 @@ h2 {
   height: 8px;
   border-radius: 2px;
   display: inline-block;
+}
+
+/* ---- Dashboard shell: nav + theme toggle ---- */
+
+.dash-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.dash-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.dash-theme-toggle select {
+  font-family: inherit;
+  font-size: var(--font-small);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  min-height: 44px;
+}
+
+.dash-nav {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--divider);
+}
+
+.dash-nav-link {
+  flex-shrink: 0;
+  font-size: var(--font-small);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--motion) var(--motion-easing), background var(--motion) var(--motion-easing);
+}
+
+.dash-nav-link:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.dash-nav-link-active {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+/* ---- KPI Cards ---- */
+
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .dash-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dash-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.dash-kpi-label {
+  font-size: var(--font-caption);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-2);
+}
+
+.dash-kpi-value {
+  font-size: var(--font-h3);
+  font-weight: var(--weight-bold);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.dash-kpi-unit {
+  font-size: var(--font-small);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+.dash-kpi-trend {
+  font-size: var(--font-body);
+  margin-left: var(--space-1);
+}
+
+.dash-kpi-trend-increasing {
+  color: var(--color-success);
+}
+
+.dash-kpi-trend-decreasing {
+  color: var(--color-danger);
+}
+
+.dash-kpi-trend-stable {
+  color: var(--text-muted);
+}
+
+.dash-kpi-help {
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  margin: var(--space-1) 0 0;
+}
+
+/* ---- Filters ---- */
+
+.dash-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.dash-filter-search,
+.dash-filter-select {
+  font-family: inherit;
+  font-size: var(--font-small);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+}
+
+.dash-filter-search {
+  flex: 1 1 220px;
+}
+
+.dash-filter-select-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+/* ---- Virtual list / Activities ---- */
+
+.dash-virtual-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.dash-activity-row {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border: none;
+  border-bottom: 1px solid var(--divider);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-small);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-activity-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.dash-activity-row-selected {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.dash-activity-name {
+  flex: 1;
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-activity-meta {
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ---- Activity detail / generic definition grid ---- */
+
+.dash-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .dash-detail-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dash-detail-grid dt {
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dash-detail-grid dd {
+  margin: 0;
+  font-size: var(--font-body);
+  font-weight: var(--weight-semibold);
+}
+
+.dash-subheading {
+  font-size: var(--font-small);
+  font-weight: var(--weight-semibold);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.dash-plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---- Recommendation cards (Coach page) ---- */
+
+.dash-recommendation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash-recommendation-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+
+.dash-recommendation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.dash-recommendation-reasoning {
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.dash-prediction-card {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: var(--font-small);
+}
+
+.dash-settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-small);
+}
+
+.dash-settings-row select {
+  font-family: inherit;
+  font-size: var(--font-small);
+  background: var(--page);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+}
+
+.dash-link-button {
+  font-family: inherit;
+  font-size: var(--font-small);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  min-height: 44px;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 /* Responsive: section grids collapse to a single column below tablet width (DESIGN_SYSTEM.md breakpoints). */

@@ -39,7 +39,8 @@ const BEST_EFFORT_DISTANCES_KM: Record<string, number> = {
   half_marathon: 21.0975,
 };
 
-function extractBestEfforts(activities: Activity[]): BestEffort[] {
+/** Exported for reuse by dashboard/hooks/assemblePredictionsView.ts -- the Predictions page needs the same best-effort extraction the Daily Brief already does, not a second implementation of it. */
+export function extractBestEfforts(activities: Activity[]): BestEffort[] {
   const bestByKey = new Map<string, number>();
   for (const activity of activities) {
     if (!activity.bestEfforts) continue;
