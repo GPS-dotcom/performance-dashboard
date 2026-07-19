@@ -3,16 +3,85 @@
 // imports/validates/normalizes external data"). Pulls the athlete's
 // recent Strava activities, upserts them into `strava_activities`
 // (migration 0013), then derives daily Training Load per session and
-// recomputes the full CTL/ATL/TSB series into `daily_pmc` -- using the
-// exact same formulas as metrics/calculators/ (see _shared/trainingLoad.ts's
-// header comment for why they're duplicated here rather than imported).
+// recomputes the full CTL/ATL/TSB series into `daily_pmc`.
+//
+// The Training Load / CTL / ATL formulas below mirror
+// treino-z2/src/metrics/calculators/trainingLoadCalculator.ts and
+// shared/ewma.ts exactly (same formulas, same constants) -- inlined into
+// this single file (rather than imported from a shared module) so this
+// function can be deployed as one self-contained file from the Supabase
+// Dashboard's Edge Function editor, with no local CLI/terminal required.
+// If the Metrics Engine's formulas ever change, update both places -- see
+// METRICS_ENGINE_REPORT.md for the citations behind these constants
+// (Coggan's power-based TSS; Banister's CTL/ATL EWMA, tau=42/7 days).
 //
 // Invoke manually (curl/browser hit) or on a schedule (Supabase's Edge
 // Function Schedules, or pg_cron calling this URL) -- see
 // supabase/functions/README.md for both.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { ATL_TAU_DAYS, CTL_TAU_DAYS, computeSessionLoad, exponentialMovingAverage } from "../_shared/trainingLoad.ts";
-import type { DailyLoad } from "../_shared/trainingLoad.ts";
+
+const CTL_TAU_DAYS = 42;
+const ATL_TAU_DAYS = 7;
+
+interface DailyLoad {
+  date: string; // YYYY-MM-DD
+  load: number;
+}
+
+/** Same three-tier fallback as trainingLoadCalculator.ts: power-based TSS, then HR-based, then null (no RPE input exists from Strava). */
+function computeSessionLoad(input: {
+  durationSec: number;
+  normalizedPowerWatts: number | null;
+  ftpWatts: number | null;
+  averageHeartRate: number | null;
+  thresholdHeartRate: number | null;
+}): number | null {
+  if (!(input.durationSec > 0)) return null;
+
+  if (input.normalizedPowerWatts && input.normalizedPowerWatts > 0 && input.ftpWatts && input.ftpWatts > 0) {
+    const intensityFactor = input.normalizedPowerWatts / input.ftpWatts;
+    return ((input.durationSec * intensityFactor * intensityFactor) / 3600) * 100;
+  }
+
+  if (input.averageHeartRate && input.averageHeartRate > 0 && input.thresholdHeartRate && input.thresholdHeartRate > 0) {
+    const intensityFactor = input.averageHeartRate / input.thresholdHeartRate;
+    return ((input.durationSec * intensityFactor * intensityFactor) / 3600) * 100;
+  }
+
+  return null;
+}
+
+function toDayNumber(dateStr: string): number {
+  return Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 86400000);
+}
+
+function fromDayNumber(day: number): string {
+  return new Date(day * 86400000).toISOString().slice(0, 10);
+}
+
+/** Same recurrence as shared/ewma.ts's exponentialMovingAverage: today = yesterday + (load - yesterday) / tauDays, gaps filled with load = 0. */
+function exponentialMovingAverage(dailyLoads: DailyLoad[], tauDays: number): DailyLoad[] {
+  if (dailyLoads.length === 0) return [];
+
+  const sorted = [...dailyLoads].sort((a, b) => a.date.localeCompare(b.date));
+  const startDay = toDayNumber(sorted[0].date);
+  const endDay = toDayNumber(sorted[sorted.length - 1].date);
+
+  const loadByDay = new Map<number, number>();
+  for (const entry of sorted) {
+    const day = toDayNumber(entry.date);
+    loadByDay.set(day, (loadByDay.get(day) ?? 0) + entry.load);
+  }
+
+  let average = 0;
+  const series: DailyLoad[] = [];
+  for (let day = startDay; day <= endDay; day++) {
+    const load = loadByDay.get(day) ?? 0;
+    average += (load - average) / tauDays;
+    series.push({ date: fromDayNumber(day), load: average });
+  }
+  return series;
+}
 
 const STRAVA_CLIENT_ID = Deno.env.get("STRAVA_CLIENT_ID");
 const STRAVA_CLIENT_SECRET = Deno.env.get("STRAVA_CLIENT_SECRET");

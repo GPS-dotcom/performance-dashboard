@@ -8,8 +8,7 @@ This is the "Sync Engine" `docs/ARCHITECTURE.md` describes as "the only
 component allowed to talk to third-party APIs."
 
 - `strava-oauth-callback/` -- one-time OAuth handshake; stores the access/refresh token in `strava_tokens`.
-- `strava-sync/` -- the actual sync job; fetches activities, upserts them, and recomputes CTL/ATL/TSB.
-- `_shared/trainingLoad.ts` -- the Training Load / CTL / ATL formulas, kept identical to `treino-z2/src/metrics/calculators/`.
+- `strava-sync/` -- the actual sync job; fetches activities, upserts them, and recomputes CTL/ATL/TSB. Each function is a single self-contained `index.ts` file (the Training Load / CTL / ATL formulas are inlined directly into `strava-sync/index.ts`, kept identical to `treino-z2/src/metrics/calculators/`) -- no shared/relative imports between functions, on purpose, so each one can be deployed by pasting its whole file into the Supabase Dashboard's Edge Function editor, no CLI/terminal required.
 
 ## One-time setup
 
@@ -18,6 +17,15 @@ component allowed to talk to third-party APIs."
 Go to **strava.com/settings/api**, create an app if you haven't. Note the **Client ID** and **Client Secret**.
 
 ### 2. Deploy the two functions
+
+**Option A -- Supabase Dashboard (no terminal needed, works from any browser incl. iPad):**
+
+1. Open your project at supabase.com/dashboard → **Edge Functions** in the left sidebar.
+2. Click **Deploy a new function** → choose the option to write code directly in the browser editor (not "via CLI").
+3. Name it exactly `strava-oauth-callback`, delete the placeholder code, and paste in the full contents of `supabase/functions/strava-oauth-callback/index.ts` from this repo. Deploy.
+4. Repeat: click **Deploy a new function** again, name it exactly `strava-sync`, paste in the full contents of `supabase/functions/strava-sync/index.ts`. Deploy.
+
+**Option B -- Supabase CLI (if you have a terminal):**
 
 From the repo root, with the [Supabase CLI](https://supabase.com/docs/guides/cli) installed and logged in:
 
@@ -28,6 +36,10 @@ supabase functions deploy strava-sync
 ```
 
 ### 3. Set secrets
+
+**Dashboard:** Edge Functions → **Secrets** (or "Manage secrets") → add `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET` as key/value pairs.
+
+**CLI:**
 
 ```bash
 supabase secrets set STRAVA_CLIENT_ID=<your client id>
