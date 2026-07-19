@@ -12,6 +12,8 @@ export interface AthleteProfile {
   restingHr: number | null;
   thresholdPaceSecPerKm: number | null;
   thresholdPower: number | null;
+  /** Lactate threshold heart rate, in bpm (migration 0014) -- what the Sync Engine's HR-based Training Load falls back to when the athlete has no power meter. */
+  thresholdHeartRate: number | null;
   preferredUnits: "metric" | "imperial";
 }
 
@@ -27,6 +29,7 @@ interface AthleteRow {
   resting_hr: number | null;
   threshold_pace_sec_per_km: number | null;
   threshold_power: number | null;
+  threshold_heart_rate: number | null;
   preferred_units: "metric" | "imperial";
 }
 
@@ -43,6 +46,7 @@ function mapAthleteRow(row: AthleteRow): AthleteProfile {
     restingHr: row.resting_hr,
     thresholdPaceSecPerKm: row.threshold_pace_sec_per_km,
     thresholdPower: row.threshold_power,
+    thresholdHeartRate: row.threshold_heart_rate,
     preferredUnits: row.preferred_units,
   };
 }
@@ -59,7 +63,7 @@ export async function fetchCurrentAthlete(): Promise<AthleteProfile | null> {
   try {
     const { data, error } = await getSupabase()
       .from("athletes")
-      .select("id,birthday,sex,height_cm,weight_kg,ftp,vo2max,max_hr,resting_hr,threshold_pace_sec_per_km,threshold_power,preferred_units")
+      .select("id,birthday,sex,height_cm,weight_kg,ftp,vo2max,max_hr,resting_hr,threshold_pace_sec_per_km,threshold_power,threshold_heart_rate,preferred_units")
       .limit(1)
       .maybeSingle();
 

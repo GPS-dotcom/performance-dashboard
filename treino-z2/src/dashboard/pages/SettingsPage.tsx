@@ -56,6 +56,7 @@ export function SettingsPage() {
               <li>Weight: {state.data.athlete.weightKg != null ? `${state.data.athlete.weightKg}kg` : "not set"}</li>
               <li>Max HR: {state.data.athlete.maxHr != null ? `${state.data.athlete.maxHr}bpm` : "not set"}</li>
               <li>Threshold Pace: {state.data.athlete.thresholdPaceSecPerKm != null ? `${state.data.athlete.thresholdPaceSecPerKm}s/km` : "not set"}</li>
+              <li>Threshold Heart Rate: {state.data.athlete.thresholdHeartRate != null ? `${state.data.athlete.thresholdHeartRate}bpm` : "not set"}</li>
               <li>Units: {state.data.athlete.preferredUnits}</li>
             </ul>
           ) : (

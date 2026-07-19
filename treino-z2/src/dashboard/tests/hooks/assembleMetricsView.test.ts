@@ -18,6 +18,7 @@ function makeAthlete(overrides: Partial<AthleteProfile> = {}): AthleteProfile {
     restingHr: null,
     thresholdPaceSecPerKm: null,
     thresholdPower: null,
+    thresholdHeartRate: null,
     preferredUnits: "metric",
     ...overrides,
   };

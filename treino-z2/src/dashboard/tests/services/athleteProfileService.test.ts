@@ -37,6 +37,7 @@ describe("fetchCurrentAthlete", () => {
           resting_hr: 45,
           threshold_pace_sec_per_km: 240,
           threshold_power: 230,
+          threshold_heart_rate: 165,
           preferred_units: "metric",
         },
         error: null,
@@ -55,6 +56,7 @@ describe("fetchCurrentAthlete", () => {
       restingHr: 45,
       thresholdPaceSecPerKm: 240,
       thresholdPower: 230,
+      thresholdHeartRate: 165,
       preferredUnits: "metric",
     });
   });

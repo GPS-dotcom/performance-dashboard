@@ -38,6 +38,7 @@ function makeAthlete(overrides: Partial<AthleteProfile> = {}): AthleteProfile {
     restingHr: null,
     thresholdPaceSecPerKm: 240,
     thresholdPower: null,
+    thresholdHeartRate: 165,
     preferredUnits: "metric",
     ...overrides,
   };
@@ -87,6 +88,16 @@ describe("SettingsPage", () => {
     expect(screen.getByText("FTP: 250W")).toBeInTheDocument();
     expect(screen.getByText("Max HR: 190bpm")).toBeInTheDocument();
     expect(screen.getByText("Weight: not set")).toBeInTheDocument();
+    expect(screen.getByText("Threshold Heart Rate: 165bpm")).toBeInTheDocument();
+  });
+
+  it("shows 'not set' for threshold heart rate when the athlete hasn't set one", () => {
+    mockState.mockReturnValue({
+      status: "ready",
+      data: { activities: [], metricsHistory: [], upcomingGoal: null, athlete: makeAthlete({ thresholdHeartRate: null }), today: "2026-07-19" },
+    });
+    renderSettings();
+    expect(screen.getByText("Threshold Heart Rate: not set")).toBeInTheDocument();
   });
 
   it("renders a static integrations list and a sync empty state", () => {
