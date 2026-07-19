@@ -6,6 +6,7 @@ import type { Activity, MetricsSnapshot } from "../../types";
 import { fetchCurrentAthlete } from "../services/athleteProfileService";
 import type { AthleteProfile } from "../services/athleteProfileService";
 import type { LoadState } from "../types";
+import { extractErrorMessage } from "../../utils/errorMessage";
 
 export interface AthleteData {
   activities: Activity[];
@@ -45,7 +46,7 @@ export function useAthleteData(): UseAthleteDataResult {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+        setState({ status: "error", message: extractErrorMessage(err) });
       });
 
     return () => {

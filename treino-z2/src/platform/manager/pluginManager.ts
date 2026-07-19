@@ -15,6 +15,7 @@ import type { PluginConfigStore } from "./configStore";
 import { createPluginContext } from "./pluginContextFactory";
 import { createScopedRegistrar } from "./scopedRegistrar";
 import type { ScopedRegistrarHandle } from "./scopedRegistrar";
+import { extractErrorMessage } from "../../utils/errorMessage";
 
 export class PluginManagerError extends Error {}
 
@@ -108,7 +109,7 @@ export class PluginManager {
       record.state = "installed";
       this.eventBus.publish("PluginInstalled", { pluginId: id, version });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = extractErrorMessage(err);
       record.state = "error";
       record.errorMessage = message;
       this.eventBus.publish("PluginError", { pluginId: id, message });
@@ -131,7 +132,7 @@ export class PluginManager {
       this.eventBus.publish("PluginEnabled", { pluginId: id });
     } catch (err) {
       scoped.revokeAll(); // undo whatever it managed to contribute before throwing
-      const message = err instanceof Error ? err.message : String(err);
+      const message = extractErrorMessage(err);
       record.state = "error";
       record.errorMessage = message;
       this.eventBus.publish("PluginError", { pluginId: id, message });
@@ -147,7 +148,7 @@ export class PluginManager {
     try {
       await record.plugin.onDisable?.(record.context);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = extractErrorMessage(err);
       this.eventBus.publish("PluginError", { pluginId: id, message });
     }
 
@@ -172,7 +173,7 @@ export class PluginManager {
     try {
       await record.plugin.onUninstall?.(record.context);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = extractErrorMessage(err);
       this.eventBus.publish("PluginError", { pluginId: id, message });
     }
 

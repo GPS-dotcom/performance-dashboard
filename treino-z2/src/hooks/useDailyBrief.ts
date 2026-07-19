@@ -4,6 +4,7 @@ import { fetchUpcomingGoal } from "../services/goalService";
 import { assembleDailyBrief } from "./assembleDailyBrief";
 import type { DailyBriefViewModel } from "./assembleDailyBrief";
 import { readDailyBriefCache, writeDailyBriefCache } from "./dailyBriefCache";
+import { extractErrorMessage } from "../utils/errorMessage";
 
 export type DailyBriefLoadState =
   | { status: "loading" }
@@ -50,7 +51,7 @@ export function useDailyBrief(): UseDailyBriefResult {
       })
       .catch((err: unknown) => {
         if (cancelled || cached) return; // keep showing cached data rather than downgrade to an error
-        setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+        setState({ status: "error", message: extractErrorMessage(err) });
       });
 
     return () => {
